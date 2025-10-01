@@ -49,11 +49,12 @@ export async function POST(request: Request) {
 
 		// Set the token in a HTTP-only cookie
 		const response = NextResponse.json({ success: true });
-		response.cookies.set('auth-token', token, {
+		response.cookies.set('authToken', token, {
 			httpOnly: true,
 			secure: process.env.NODE_ENV === 'production',
 			sameSite: 'lax',
 			maxAge: 7 * 24 * 60 * 60, // 7 days
+			path: '/', // Add this to ensure the cookie is available for all paths
 		});
 
 		return response;

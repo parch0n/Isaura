@@ -55,6 +55,12 @@ export default function Login() {
         throw new Error(data.error || "Something went wrong");
       }
 
+      // Save email in localStorage
+      localStorage.setItem('userEmail', email);
+
+      // Force a refresh of the router to ensure middleware runs
+      router.refresh();
+      
       // Redirect to dashboard or home page after successful verification
       router.push("/");
     } catch (error) {
