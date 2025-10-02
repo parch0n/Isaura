@@ -186,9 +186,25 @@ export default function Home() {
   return (
     <div className={`${theme === 'dark' ? 'min-h-screen bg-gradient-to-b from-slate-900 to-black' : 'min-h-screen bg-gradient-to-b from-slate-50 to-slate-100'} py-16 px-4 sm:px-6 lg:px-8`}>
       <div className="max-w-2xl mx-auto">
-        {/* Page-level theme toggle */}
-        <div className="mb-4 flex items-center justify-end gap-2">
-          <button
+        {/* Page-level header with email on the left and actions on the right */}
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <div className="min-w-0">
+              {userEmail ? (
+                <span
+                  className={`text-xs h-9 px-3 flex items-center rounded-md border max-w-[40vw] truncate ${
+                    theme === 'dark'
+                      ? 'text-slate-300 border-slate-700 bg-slate-900/60'
+                      : 'text-slate-600 border-slate-200 bg-white/70'
+                  }`}
+                  style={{ minHeight: '2.25rem' }}
+                  title={userEmail}
+                >
+                  {userEmail}
+                </span>
+              ) : null}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
             onClick={toggleTheme}
             className={`p-2 rounded-md border transition-colors cursor-pointer ${theme === 'dark' ? 'text-slate-200 border-slate-700 hover:bg-slate-800 bg-slate-900/60' : 'text-slate-600 border-slate-200 hover:bg-slate-100 bg-white/70'}`}
             aria-label="Toggle theme"
@@ -201,8 +217,8 @@ export default function Home() {
               // Moon icon
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 1 0 9.79 9.79z"/></svg>
             )}
-          </button>
-          <button
+            </button>
+            <button
             onClick={handleSignOut}
             className={`p-2 rounded-md border transition-colors cursor-pointer inline-flex items-center gap-2 ${theme === 'dark' ? 'text-slate-200 border-slate-700 hover:bg-slate-800 bg-slate-900/60' : 'text-slate-600 border-slate-200 hover:bg-slate-100 bg-white/70'}`}
             aria-label="Sign out"
@@ -213,7 +229,8 @@ export default function Home() {
               <path d="M21 12l-4-4v3h-7v2h7v3l4-4z"/>
             </svg>
             <span className="sr-only">Sign out</span>
-          </button>
+            </button>
+          </div>
         </div>
         <div className={`relative rounded-2xl shadow-xl overflow-hidden backdrop-blur-sm ${theme === 'dark' ? 'border border-slate-700 bg-slate-900/80' : 'border border-slate-200 bg-white/80'}`}>
           {/* Tab Menu as part of card */}
@@ -233,13 +250,7 @@ export default function Home() {
           </div>
           {/* Card Content */}
           <div className={`p-8 rounded-b-2xl ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'}`}>
-            <h1 className={`text-3xl font-bold tracking-tight mb-2 ${theme === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Welcome!</h1>
-            {userEmail && (
-              <p className={`${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'} mb-8`}>
-                You are logged in as{' '}
-                <span className={`font-medium ${theme === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>{userEmail}</span>
-              </p>
-            )}
+            {/* Removed welcome header and email paragraph; email is shown in header */}
             {activeTab === 'wallets' && (
               <>
                 {/* EVM Wallets Section */}
@@ -359,7 +370,7 @@ export default function Home() {
                           <th className="text-left px-4 py-3 font-semibold">Token</th>
                           <th className="text-right px-4 py-3 font-semibold">Total</th>
                           <th className="text-right px-4 py-3 font-semibold">Value (USD)</th>
-                          <th className="text-right px-4 py-3 font-semibold">Networks</th>
+                          <th className="text-left px-4 py-3 font-semibold">Networks</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -379,7 +390,15 @@ export default function Home() {
                             </td>
                             <td className="px-4 py-3 text-right tabular-nums">{new Intl.NumberFormat(undefined, { maximumFractionDigits: 6 }).format(t.total)}</td>
                             <td className="px-4 py-3 text-right tabular-nums font-medium">{new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(t.totalUSD)}</td>
-                            <td className="px-4 py-3 text-right text-xs">{t.networks.length}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex flex-wrap gap-1">
+                                {t.networks.map((n) => (
+                                  <span key={n} className={`text-[10px] px-2 py-0.5 rounded-full border ${theme === 'dark' ? 'text-slate-200 border-slate-700 bg-slate-800' : 'text-slate-700 border-slate-200 bg-slate-100'}`}>
+                                    {n}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
