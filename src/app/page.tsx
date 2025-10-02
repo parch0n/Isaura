@@ -19,6 +19,17 @@ export default function Home() {
   const [portfolioTokens, setPortfolioTokens] = useState<Array<{ symbol: string; total: number; totalUSD: number; networks: string[]; logoURI?: string }>>([]);
   const [portfolioByWallet, setPortfolioByWallet] = useState<Record<string, Array<{ symbol: string; total: number; totalUSD: number; networks: string[]; logoURI?: string }>>>({});
   const [selectedWallet, setSelectedWallet] = useState<string>('__combined__');
+  const [sortKey, setSortKey] = useState<'symbol' | 'totalUSD'>('totalUSD');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  const toggleSort = (key: 'symbol' | 'totalUSD') => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir(key === 'symbol' ? 'asc' : 'desc');
+    }
+  };
 
   const TokenIcon = ({ symbol }: { symbol: string }) => {
     const sym = (symbol || '').toUpperCase();
@@ -416,6 +427,12 @@ export default function Home() {
                     })()}
                     {(() => {
                       const rows = selectedWallet === '__combined__' ? portfolioTokens : (portfolioByWallet[selectedWallet] || []);
+                      // Apply sorting
+                      const dir = sortDir === 'asc' ? 1 : -1;
+                      const rowsSorted = [...rows].sort((a, b) => {
+                        if (sortKey === 'symbol') return dir * a.symbol.localeCompare(b.symbol);
+                        return dir * ((a.totalUSD || 0) - (b.totalUSD || 0));
+                      });
                       if (rows.length === 0) {
                         return (
                           <div className={`rounded-lg p-6 border border-dashed ${theme === 'dark' ? 'text-slate-400 bg-slate-800 border-slate-700' : 'text-slate-500 bg-slate-50 border-slate-200'}`}>
@@ -428,14 +445,40 @@ export default function Home() {
                     <table className={`w-full text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>
                       <thead className={`${theme === 'dark' ? 'bg-slate-800' : 'bg-slate-50'}`}>
                         <tr>
-                          <th className="text-left px-4 py-3 font-semibold">Token</th>
+                            <th className="text-left px-4 py-3 font-semibold select-none">
+                              <button type="button" onClick={() => toggleSort('symbol')} className={`inline-flex items-center gap-1 cursor-pointer ${theme === 'dark' ? 'hover:text-indigo-300' : 'hover:text-indigo-700'}`}>
+                                Token
+                                {sortKey === 'symbol' && (
+                                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                    {sortDir === 'asc' ? (
+                                      <path d="M7 14l5-5 5 5H7z" />
+                                    ) : (
+                                      <path d="M7 10l5 5 5-5H7z" />
+                                    )}
+                                  </svg>
+                                )}
+                              </button>
+                            </th>
                           <th className="text-right px-4 py-3 font-semibold">Total</th>
-                          <th className="text-right px-4 py-3 font-semibold">Value (USD)</th>
+                            <th className="text-right px-4 py-3 font-semibold select-none">
+                              <button type="button" onClick={() => toggleSort('totalUSD')} className={`inline-flex items-center gap-1 cursor-pointer ${theme === 'dark' ? 'hover:text-indigo-300' : 'hover:text-indigo-700'}`}>
+                                Value (USD)
+                                {sortKey === 'totalUSD' && (
+                                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                    {sortDir === 'asc' ? (
+                                      <path d="M7 14l5-5 5 5H7z" />
+                                    ) : (
+                                      <path d="M7 10l5 5 5-5H7z" />
+                                    )}
+                                  </svg>
+                                )}
+                              </button>
+                            </th>
                           <th className="text-left px-4 py-3 font-semibold">Networks</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {rows.map((t) => (
+                        {rowsSorted.map((t) => (
                           <tr key={t.symbol} className={`${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'} border-t hover:bg-indigo-50/30 dark:hover:bg-indigo-950/20 transition-colors`}>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
