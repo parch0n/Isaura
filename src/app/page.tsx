@@ -207,8 +207,9 @@ export default function Home() {
   const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
 
   return (
-    <div className={`${theme === 'dark' ? 'min-h-screen bg-gradient-to-b from-slate-900 to-black' : 'min-h-screen bg-gradient-to-b from-slate-50 to-slate-100'} py-16 px-4 sm:px-6 lg:px-8`}>
-      <div className="max-w-2xl mx-auto">
+    <div className={`${theme === 'dark' ? 'min-h-screen bg-gradient-to-b from-slate-900 to-black' : 'min-h-screen bg-gradient-to-b from-slate-50 to-slate-100'} py-16 px-4 sm:px-6 lg:px-8 flex flex-col`}>
+      <div className="flex-1">
+        <div className="max-w-2xl mx-auto">
         {/* Page-level header with email on the left and actions on the right */}
         <div className="mb-4 flex items-center justify-between gap-2">
           <div className="min-w-0">
@@ -585,7 +586,24 @@ export default function Home() {
             )}
           </div>
         </div>
+        </div>
       </div>
+      {/* Sticky Footer at bottom */}
+      <footer className="mt-auto">
+        <div className="max-w-2xl mx-auto">
+          <p className={`text-xs text-center ${theme === 'dark' ? 'text-slate-500' : 'text-slate-500'}`}>
+            Powered by{' '}
+            <a
+              href="https://www.adex.network/blog/introducing-adex-aura/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${theme === 'dark' ? 'text-indigo-300 hover:text-indigo-200' : 'text-indigo-700 hover:text-indigo-800'} underline underline-offset-2`}
+            >
+              AdEx Aura
+            </a>
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }
