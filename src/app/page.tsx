@@ -389,7 +389,42 @@ export default function Home() {
                 ) : portfolioTokens.length === 0 ? (
                   <div className={`rounded-lg p-6 border border-dashed ${theme === 'dark' ? 'text-slate-400 bg-slate-800 border-slate-700' : 'text-slate-500 bg-slate-50 border-slate-200'}`}>No balances found for the added wallets.</div>
                 ) : (
-                  <div className={`overflow-hidden rounded-lg border ${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'}`}>
+                  <>
+                    {(() => {
+                      const rows = selectedWallet === '__combined__' ? portfolioTokens : (portfolioByWallet[selectedWallet] || []);
+                      const totalUSD = rows.reduce((acc, t) => acc + (t.totalUSD || 0), 0);
+                      const tokenCount = rows.length;
+                      const uniqueNetworks = new Set<string>();
+                      rows.forEach((t) => (t.networks || []).forEach((n) => uniqueNetworks.add(n)));
+                      const networksCount = uniqueNetworks.size;
+                      return (
+                        <div className={`mb-3 grid grid-cols-1 sm:grid-cols-3 gap-2`}>
+                          <div className={`rounded-md px-3 py-2 border ${theme === 'dark' ? 'bg-slate-900/60 border-slate-700 text-slate-200' : 'bg-white/70 border-slate-200 text-slate-800'}`}>
+                            <div className={`text-[11px] ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Total Value</div>
+                            <div className="text-base font-semibold">{new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(totalUSD)}</div>
+                          </div>
+                          <div className={`rounded-md px-3 py-2 border ${theme === 'dark' ? 'bg-slate-900/60 border-slate-700 text-slate-200' : 'bg-white/70 border-slate-200 text-slate-800'}`}>
+                            <div className={`text-[11px] ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Tokens</div>
+                            <div className="text-base font-semibold">{tokenCount}</div>
+                          </div>
+                          <div className={`rounded-md px-3 py-2 border ${theme === 'dark' ? 'bg-slate-900/60 border-slate-700 text-slate-200' : 'bg-white/70 border-slate-200 text-slate-800'}`}>
+                            <div className={`text-[11px] ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Networks</div>
+                            <div className="text-base font-semibold">{networksCount}</div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    {(() => {
+                      const rows = selectedWallet === '__combined__' ? portfolioTokens : (portfolioByWallet[selectedWallet] || []);
+                      if (rows.length === 0) {
+                        return (
+                          <div className={`rounded-lg p-6 border border-dashed ${theme === 'dark' ? 'text-slate-400 bg-slate-800 border-slate-700' : 'text-slate-500 bg-slate-50 border-slate-200'}`}>
+                            No balances found for this selection.
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className={`overflow-hidden rounded-lg border ${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'}`}>
                     <table className={`w-full text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>
                       <thead className={`${theme === 'dark' ? 'bg-slate-800' : 'bg-slate-50'}`}>
                         <tr>
@@ -400,7 +435,7 @@ export default function Home() {
                         </tr>
                       </thead>
                       <tbody>
-                        {(selectedWallet === '__combined__' ? portfolioTokens : (portfolioByWallet[selectedWallet] || [])).map((t) => (
+                        {rows.map((t) => (
                           <tr key={t.symbol} className={`${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'} border-t hover:bg-indigo-50/30 dark:hover:bg-indigo-950/20 transition-colors`}>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
@@ -429,7 +464,10 @@ export default function Home() {
                         ))}
                       </tbody>
                     </table>
-                  </div>
+                        </div>
+                      );
+                    })()}
+                  </>
                 )}
               </div>
             )}
