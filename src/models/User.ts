@@ -12,6 +12,10 @@ const userSchema = new mongoose.Schema({
 		type: Boolean,
 		default: false,
 	},
+	wallets: {
+		type: [String],
+		default: [],
+	},
 	lastLoginAt: {
 		type: Date,
 	},
