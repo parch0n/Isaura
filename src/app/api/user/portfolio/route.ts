@@ -35,7 +35,7 @@ export async function GET() {
 				return { ok: true as const, addr, json };
 			}
 			try {
-				const url = `https://aura.adex.network/api/portfolio/balances?address=${addr}`;
+				const url = `https://aura.adex.network/api/portfolio/balances?address=${addr}&apiKey=${process.env.AURA_API_KEY}`;
 				const res = await fetchWithTimeout(url, { timeout: 20_000 });
 				if (!res.ok) throw new Error(`Aura API error ${res.status}`);
 				const json = (await res.json()) as AuraResponse;
@@ -156,7 +156,18 @@ export async function GET() {
 			return `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${slug}/assets/${address}/logo.png`;
 		}
 
-		function mapToTokensArray(m: Map<string, { symbol: string; total: number; totalUSD: number; networks: Set<string>; addressesByChainId: Map<string, string> }>) {
+		function mapToTokensArray(
+			m: Map<
+				string,
+				{
+					symbol: string;
+					total: number;
+					totalUSD: number;
+					networks: Set<string>;
+					addressesByChainId: Map<string, string>;
+				}
+			>
+		) {
 			return Array.from(m.values()).map((t) => {
 				// Pick a representative logo by preferred chain order, else first available
 				let logoURI: string | null = null;
@@ -176,19 +187,22 @@ export async function GET() {
 						}
 					}
 				}
-			return {
-				symbol: t.symbol,
-				total: t.total,
-				totalUSD: t.totalUSD,
-				networks: Array.from(t.networks),
-				logoURI: logoURI ?? undefined,
-			};
+				return {
+					symbol: t.symbol,
+					total: t.total,
+					totalUSD: t.totalUSD,
+					networks: Array.from(t.networks),
+					logoURI: logoURI ?? undefined,
+				};
 			});
 		}
 
 		const tokens = mapToTokensArray(aggMap).sort((a, b) => b.totalUSD - a.totalUSD);
 
-		const byWallet: Record<string, Array<{ symbol: string; total: number; totalUSD: number; networks: string[]; logoURI?: string }>> = {};
+		const byWallet: Record<
+			string,
+			Array<{ symbol: string; total: number; totalUSD: number; networks: string[]; logoURI?: string }>
+		> = {};
 		for (const [addr, wmap] of perWalletMap.entries()) {
 			byWallet[addr] = mapToTokensArray(wmap).sort((a, b) => b.totalUSD - a.totalUSD);
 		}
