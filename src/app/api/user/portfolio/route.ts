@@ -61,8 +61,25 @@ export async function GET() {
 			}
 		>();
 
-		for (const { json } of succeeded) {
+		// Per-wallet aggregation map: wallet address -> token symbol -> aggregated record
+		const perWalletMap = new Map<
+			string,
+			Map<
+				string,
+				{
+					symbol: string;
+					total: number;
+					totalUSD: number;
+					networks: Set<string>;
+					addressesByChainId: Map<string, string>;
+				}
+			>
+		>();
+
+		for (const { json, addr: walletAddr } of succeeded) {
 			if (!json?.portfolio) continue;
+			if (!perWalletMap.has(walletAddr)) perWalletMap.set(walletAddr, new Map());
+			const walletMap = perWalletMap.get(walletAddr)!;
 			for (const entry of json.portfolio) {
 				const networkName = entry.network?.name || entry.network?.platformId || 'unknown';
 				const chainId = entry.network?.chainId || '';
@@ -84,6 +101,24 @@ export async function GET() {
 					cur.networks.add(networkName);
 					if (chainId && tok.address && !cur.addressesByChainId.has(chainId)) {
 						cur.addressesByChainId.set(chainId, tok.address);
+					}
+
+					// Update per-wallet aggregation
+					if (!walletMap.has(key)) {
+						walletMap.set(key, {
+							symbol: key,
+							total: 0,
+							totalUSD: 0,
+							networks: new Set<string>(),
+							addressesByChainId: new Map<string, string>(),
+						});
+					}
+					const wcur = walletMap.get(key)!;
+					wcur.total += Number(tok.balance || 0);
+					wcur.totalUSD += Number(tok.balanceUSD || 0);
+					wcur.networks.add(networkName);
+					if (chainId && tok.address && !wcur.addressesByChainId.has(chainId)) {
+						wcur.addressesByChainId.set(chainId, tok.address);
 					}
 				}
 			}
@@ -121,8 +156,8 @@ export async function GET() {
 			return `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${slug}/assets/${address}/logo.png`;
 		}
 
-		const tokens = Array.from(aggMap.values())
-			.map((t) => {
+		function mapToTokensArray(m: Map<string, { symbol: string; total: number; totalUSD: number; networks: Set<string>; addressesByChainId: Map<string, string> }>) {
+			return Array.from(m.values()).map((t) => {
 				// Pick a representative logo by preferred chain order, else first available
 				let logoURI: string | null = null;
 				for (const cid of preferredChains) {
@@ -141,21 +176,29 @@ export async function GET() {
 						}
 					}
 				}
-				return {
-					symbol: t.symbol,
-					total: t.total,
-					totalUSD: t.totalUSD,
-					networks: Array.from(t.networks),
-					logoURI: logoURI ?? undefined,
-				};
-			})
-			.sort((a, b) => b.totalUSD - a.totalUSD);
+			return {
+				symbol: t.symbol,
+				total: t.total,
+				totalUSD: t.totalUSD,
+				networks: Array.from(t.networks),
+				logoURI: logoURI ?? undefined,
+			};
+			});
+		}
+
+		const tokens = mapToTokensArray(aggMap).sort((a, b) => b.totalUSD - a.totalUSD);
+
+		const byWallet: Record<string, Array<{ symbol: string; total: number; totalUSD: number; networks: string[]; logoURI?: string }>> = {};
+		for (const [addr, wmap] of perWalletMap.entries()) {
+			byWallet[addr] = mapToTokensArray(wmap).sort((a, b) => b.totalUSD - a.totalUSD);
+		}
 
 		return NextResponse.json({
 			success: true,
 			walletsCount: wallets.length,
 			addresses: wallets,
 			tokens,
+			byWallet,
 		});
 	} catch (error) {
 		console.error('Error in portfolio summary route:', error);

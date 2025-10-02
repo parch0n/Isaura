@@ -17,6 +17,8 @@ export default function Home() {
   const [portfolioLoading, setPortfolioLoading] = useState(false);
   const [portfolioError, setPortfolioError] = useState("");
   const [portfolioTokens, setPortfolioTokens] = useState<Array<{ symbol: string; total: number; totalUSD: number; networks: string[]; logoURI?: string }>>([]);
+  const [portfolioByWallet, setPortfolioByWallet] = useState<Record<string, Array<{ symbol: string; total: number; totalUSD: number; networks: string[]; logoURI?: string }>>>({});
+  const [selectedWallet, setSelectedWallet] = useState<string>('__combined__');
 
   const TokenIcon = ({ symbol }: { symbol: string }) => {
     const sym = (symbol || '').toUpperCase();
@@ -35,6 +37,13 @@ export default function Home() {
     }
   }, [newWallet, wallets]);
 
+  // Keep selected wallet valid when wallets list changes
+  useEffect(() => {
+    if (selectedWallet !== '__combined__' && !wallets.includes(selectedWallet)) {
+      setSelectedWallet('__combined__');
+    }
+  }, [wallets, selectedWallet]);
+
   useEffect(() => {
     const email = localStorage.getItem("userEmail");
     setUserEmail(email);
@@ -51,7 +60,10 @@ export default function Home() {
         const res = await fetch('/api/user/portfolio', { cache: 'no-store' });
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error || 'Failed to load portfolio');
-        if (!cancelled) setPortfolioTokens(Array.isArray(data.tokens) ? data.tokens : []);
+        if (!cancelled) {
+          setPortfolioTokens(Array.isArray(data.tokens) ? data.tokens : []);
+          setPortfolioByWallet(data.byWallet && typeof data.byWallet === 'object' ? data.byWallet : {});
+        }
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Failed to load portfolio';
         if (!cancelled) setPortfolioError(message);
@@ -353,6 +365,20 @@ export default function Home() {
             {activeTab === 'portfolio' && (
               <div className="mb-6">
                 <h2 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Portfolio</h2>
+                {/* Wallet selector */}
+                <div className="mb-3 flex items-center gap-2">
+                  <label className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>View:</label>
+                  <select
+                    value={selectedWallet}
+                    onChange={(e) => setSelectedWallet(e.target.value)}
+                    className={`text-sm px-2 py-2 rounded-md border ${theme === 'dark' ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-800'}`}
+                  >
+                    <option value="__combined__">Combined (All Wallets)</option>
+                    {wallets.map((w) => (
+                      <option key={w} value={w}>{w}</option>
+                    ))}
+                  </select>
+                </div>
                 {portfolioLoading ? (
                   <div className={`rounded-lg p-6 flex items-center justify-center gap-3 ${theme === 'dark' ? 'text-slate-300 bg-slate-800 border border-slate-700' : 'text-slate-600 bg-slate-50 border border-slate-200'}`}>
                     <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
@@ -374,7 +400,7 @@ export default function Home() {
                         </tr>
                       </thead>
                       <tbody>
-                        {portfolioTokens.map((t) => (
+                        {(selectedWallet === '__combined__' ? portfolioTokens : (portfolioByWallet[selectedWallet] || [])).map((t) => (
                           <tr key={t.symbol} className={`${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'} border-t hover:bg-indigo-50/30 dark:hover:bg-indigo-950/20 transition-colors`}>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
