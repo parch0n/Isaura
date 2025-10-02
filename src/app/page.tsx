@@ -9,6 +9,9 @@ export default function Home() {
   const [newWallet, setNewWallet] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'wallets' | 'portfolio'>('wallets');
+  const [copied, setCopied] = useState<string | null>(null);
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -99,6 +102,16 @@ export default function Home() {
     }
   };
 
+  const handleCopy = async (addr: string) => {
+    try {
+      await navigator.clipboard.writeText(addr);
+      setCopied(addr);
+      setTimeout(() => setCopied(null), 1200);
+    } catch (e) {
+      console.error("Copy failed", e);
+    }
+  };
+
   const handleSignOut = async () => {
     try {
       const res = await fetch("/api/auth/logout", {
@@ -119,99 +132,185 @@ export default function Home() {
     }
   };
 
+  useEffect(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('theme') : null;
+    const prefersDark = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initial = saved === 'dark' || (!saved && prefersDark) ? 'dark' : 'light';
+    setTheme(initial);
+    if (initial === 'dark') document.documentElement.classList.add('dark');
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('theme', theme);
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }, [theme]);
+
+  const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
+
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-xl mx-auto">
-        <div className="bg-white p-8 rounded-lg shadow-md">
-          <h1 className="text-2xl font-bold mb-4 text-gray-900">Welcome!</h1>
-          {userEmail && (
-            <p className="text-gray-600 mb-6">
-              You are logged in as:{" "}
-              <span className="font-medium text-gray-900">{userEmail}</span>
-            </p>
-          )}
-
-          {/* EVM Wallets Section */}
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold mb-4 text-gray-900">Your Wallets</h2>
-            
-            {/* Add new wallet form */}
-            <form onSubmit={handleAddWallet} className="mb-4">
-              <div className="flex gap-2 w-full">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={newWallet}
-                  onChange={(e) => setNewWallet(e.target.value)}
-                  placeholder="Enter Wallet (0x...)"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 placeholder-gray-500"
-                  pattern="^0x[a-fA-F0-9]{40}$"
-                  required
-                  disabled={loading || wallets.length >= 10}
-                  autoFocus
-                />
-                <button
-                  type="submit"
-                  disabled={loading || wallets.length >= 10}
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-                >
-                  Add
-                </button>
-              </div>
-              {wallets.length >= 10 && (
-                <p className="mt-2 text-sm text-red-600">
-                  Maximum number of wallets (10) reached
-                </p>
-              )}
-            </form>
-
-            {/* Wallets list */}
-            <div className="space-y-2">
-              {wallets.length === 0 ? (
-                <p className="text-gray-500 text-sm">No wallets added yet</p>
-              ) : (
-                wallets.map((wallet) => (
-                  <div
-                    key={wallet}
-                    className="flex items-center justify-between bg-gray-50 p-3 rounded-md"
-                  >
-                    <code className="text-sm break-all text-gray-900">{wallet}</code>
-                    <button
-                      onClick={() => handleRemoveWallet(wallet)}
-                      disabled={loading}
-                      className="ml-2 p-1 text-gray-500 hover:text-red-600 focus:outline-none cursor-pointer disabled:cursor-not-allowed"
-                      title="Remove wallet"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Error message */}
-            {error && (
-              <p className="mt-2 text-sm text-red-600">{error}</p>
+    <div className={`${theme === 'dark' ? 'min-h-screen bg-gradient-to-b from-slate-900 to-black' : 'min-h-screen bg-gradient-to-b from-slate-50 to-slate-100'} py-16 px-4 sm:px-6 lg:px-8`}>
+      <div className="max-w-2xl mx-auto">
+        {/* Page-level theme toggle */}
+        <div className="mb-4 flex items-center justify-end gap-2">
+          <button
+            onClick={toggleTheme}
+            className={`p-2 rounded-md border transition-colors cursor-pointer ${theme === 'dark' ? 'text-slate-200 border-slate-700 hover:bg-slate-800 bg-slate-900/60' : 'text-slate-600 border-slate-200 hover:bg-slate-100 bg-white/70'}`}
+            aria-label="Toggle theme"
+            title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          >
+            {theme === 'dark' ? (
+              // Sun icon
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12z"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            ) : (
+              // Moon icon
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 1 0 9.79 9.79z"/></svg>
             )}
-          </div>
-
+          </button>
           <button
             onClick={handleSignOut}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className={`p-2 rounded-md border transition-colors cursor-pointer inline-flex items-center gap-2 ${theme === 'dark' ? 'text-slate-200 border-slate-700 hover:bg-slate-800 bg-slate-900/60' : 'text-slate-600 border-slate-200 hover:bg-slate-100 bg-white/70'}`}
+            aria-label="Sign out"
+            title="Sign out"
           >
-            Sign Out
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+              <path d="M7.5 3.75A2.25 2.25 0 0 0 5.25 6v12A2.25 2.25 0 0 0 7.5 20.25h6a.75.75 0 0 0 0-1.5h-6a.75.75 0 0 1-.75-.75V6a.75.75 0 0 1 .75-.75h6a.75.75 0 0 0 0-1.5h-6z"/>
+              <path d="M21 12l-4-4v3h-7v2h7v3l4-4z"/>
+            </svg>
+            <span className="sr-only">Sign out</span>
           </button>
+        </div>
+        <div className={`relative rounded-2xl shadow-xl overflow-hidden backdrop-blur-sm ${theme === 'dark' ? 'border border-slate-700 bg-slate-900/80' : 'border border-slate-200 bg-white/80'}`}>
+          {/* Tab Menu as part of card */}
+          <div className={`-mb-px flex items-stretch gap-0 border-b rounded-t-2xl overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'}`}>
+            <button
+              className={`flex-1 px-6 py-3 transition-colors focus:outline-none border-b-2 cursor-pointer ${activeTab === 'wallets' ? (theme === 'dark' ? 'bg-slate-900 border-indigo-400 text-indigo-300 font-semibold shadow-sm' : 'bg-white border-indigo-600 text-indigo-700 font-semibold shadow-sm') : (theme === 'dark' ? 'bg-slate-800 border-transparent text-slate-300 hover:text-indigo-300' : 'bg-slate-100 border-transparent text-slate-600 hover:text-indigo-700')}`}
+              onClick={() => setActiveTab('wallets')}
+            >
+              Wallets
+            </button>
+            <button
+              className={`flex-1 px-6 py-3 transition-colors focus:outline-none border-b-2 cursor-pointer ${activeTab === 'portfolio' ? (theme === 'dark' ? 'bg-slate-900 border-indigo-400 text-indigo-300 font-semibold shadow-sm' : 'bg-white border-indigo-600 text-indigo-700 font-semibold shadow-sm') : (theme === 'dark' ? 'bg-slate-800 border-transparent text-slate-300 hover:text-indigo-300' : 'bg-slate-100 border-transparent text-slate-600 hover:text-indigo-700')}`}
+              onClick={() => setActiveTab('portfolio')}
+            >
+              Portfolio
+            </button>
+          </div>
+          {/* Card Content */}
+          <div className={`p-8 rounded-b-2xl ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'}`}>
+            <h1 className={`text-3xl font-bold tracking-tight mb-2 ${theme === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Welcome!</h1>
+            {userEmail && (
+              <p className={`${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'} mb-8`}>
+                You are logged in as{' '}
+                <span className={`font-medium ${theme === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>{userEmail}</span>
+              </p>
+            )}
+            {activeTab === 'wallets' && (
+              <>
+                {/* EVM Wallets Section */}
+                <div className="mb-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Your Wallets</h2>
+                    <span className={`text-xs rounded-full px-2 py-1 ${theme === 'dark' ? 'text-slate-300 bg-slate-800 border border-slate-700' : 'text-slate-500 bg-slate-100 border border-slate-200'}`}>{wallets.length}/10</span>
+                  </div>
+                  {/* Add new wallet form */}
+                  <form onSubmit={handleAddWallet} className="mb-3">
+                    <div className="flex gap-2 w-full">
+                      <input
+                        ref={inputRef}
+                        type="text"
+                        value={newWallet}
+                        onChange={(e) => setNewWallet(e.target.value)}
+                        placeholder="Enter Wallet (0x...)"
+                        className={`w-full px-3 py-2 rounded-md text-sm ring-1 ring-transparent focus:ring-2 focus:border-indigo-500 shadow-sm placeholder-slate-400 ${theme === 'dark' ? 'bg-slate-800 border border-slate-700 focus:ring-indigo-400 text-slate-100' : 'bg-white border border-slate-200 focus:ring-indigo-500 text-slate-900'}`}
+                        pattern="^0x[a-fA-F0-9]{40}$"
+                        required
+                        disabled={loading || wallets.length >= 10}
+                        autoFocus
+                      />
+                      <button
+                        type="submit"
+                        disabled={loading || wallets.length >= 10}
+                        className={`px-4 py-2 rounded-md text-sm font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed ${theme === 'dark' ? 'bg-indigo-600 hover:bg-indigo-500 focus:ring-indigo-400 focus:ring-offset-slate-900' : 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500'}`}
+                      >
+                        Add
+                      </button>
+                    </div>
+                  </form>
+                  <div className="space-y-2">
+                    {error && (
+                      <div role="alert" className={`mt-1 text-sm rounded-md p-3 border ${theme === 'dark' ? 'text-rose-300 bg-rose-950/40 border-rose-900' : 'text-rose-700 bg-rose-50 border-rose-200'}`}>
+                        {error}
+                      </div>
+                    )}
+                    {wallets.length >= 10 && (
+                      <p className={`mt-1 text-xs ${theme === 'dark' ? 'text-rose-400' : 'text-rose-600'}`}>Maximum number of wallets (10) reached</p>
+                    )}
+                  </div>
+                </div>
+                {/* Wallets list */}
+                <div className="space-y-2">
+                  {wallets.length === 0 ? (
+                    <div className={`text-sm rounded-lg p-4 border border-dashed ${theme === 'dark' ? 'text-slate-400 bg-slate-800 border-slate-700' : 'text-slate-500 bg-slate-50 border-slate-200'}`}>No wallets added yet. Add your first one above.</div>
+                  ) : (
+                    wallets.map((wallet) => (
+                      <div
+                        key={wallet}
+                        className={`flex items-center justify-between transition-colors p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-800 border border-slate-700 hover:border-indigo-500 hover:bg-indigo-950/20' : 'bg-slate-50 border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50'}`}
+                      >
+                        <code className={`font-mono text-sm break-all ${theme === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>{wallet}</code>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleCopy(wallet)}
+                            disabled={loading}
+                            className={`p-1 rounded-md focus:outline-none cursor-pointer disabled:cursor-not-allowed ${copied === wallet ? (theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600') : (theme === 'dark' ? 'text-slate-400 hover:text-indigo-300 hover:bg-slate-700' : 'text-slate-500 hover:text-indigo-600 hover:bg-indigo-100')}`}
+                            title={copied === wallet ? 'Copied!' : 'Copy address'}
+                            aria-label="Copy address"
+                          >
+                            {copied === wallet ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path fillRule="evenodd" d="M9 12.75 10.5 14.25 15 9.75 16.5 11.25 10.5 17.25 7.5 14.25 9 12.75z" clipRule="evenodd"/></svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                                <rect x="9" y="9" width="10" height="12" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                              </svg>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleRemoveWallet(wallet)}
+                            disabled={loading}
+                            className={`p-1 rounded-md focus:outline-none cursor-pointer disabled:cursor-not-allowed ${theme === 'dark' ? 'text-slate-400 hover:text-rose-400 hover:bg-slate-700' : 'text-slate-500 hover:text-rose-600 hover:bg-rose-100'}`}
+                            title="Remove wallet"
+                            aria-label="Remove wallet"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-5 w-5"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                {/* Removed big sign out button; using compact header action instead */}
+              </>
+            )}
+            {activeTab === 'portfolio' && (
+              <div className="mb-6">
+                <h2 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Portfolio</h2>
+                <div className={`rounded-lg p-6 border border-dashed ${theme === 'dark' ? 'text-slate-400 bg-slate-800 border-slate-700' : 'text-slate-500 bg-slate-50 border-slate-200'}`}>Portfolio content coming soon...</div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
