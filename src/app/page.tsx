@@ -224,12 +224,12 @@ export default function Home() {
           <div className="min-w-0">
               {userEmail ? (
                 <span
-                  className={`text-xs h-9 px-3 flex items-center rounded-md border max-w-[40vw] truncate ${
+                  className={`text-xs h-9 px-3 flex items-center rounded-md border max-w-[40vw] truncate cursor-default ${
                     theme === 'dark'
                       ? 'text-slate-300 border-slate-700 bg-slate-900/60'
                       : 'text-slate-600 border-slate-200 bg-white/70'
                   }`}
-                  style={{ minHeight: '2.25rem' }}
+                  style={{ minHeight: '2.25rem', cursor: 'default' }}
                   title={userEmail}
                 >
                   {userEmail}
@@ -290,7 +290,12 @@ export default function Home() {
                 <div className="mb-8">
                   <div className="flex items-center justify-between mb-4">
                     <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Your Wallets</h2>
-                    <span className={`text-xs rounded-full px-2 py-1 ${theme === 'dark' ? 'text-slate-300 bg-slate-800 border border-slate-700' : 'text-slate-500 bg-slate-100 border border-slate-200'}`}>{wallets.length}/10</span>
+                    <span
+                      className={`text-xs rounded-full px-2 py-1 cursor-default ${theme === 'dark' ? 'text-slate-300 bg-slate-800 border border-slate-700' : 'text-slate-500 bg-slate-100 border border-slate-200'}`}
+                      style={{ cursor: 'default' }}
+                    >
+                      {wallets.length}/10
+                    </span>
                   </div>
                   {/* Add new wallet form */}
                   <form onSubmit={handleAddWallet} className="mb-3">
@@ -335,7 +340,8 @@ export default function Home() {
                     wallets.map((wallet) => (
                       <div
                         key={wallet}
-                        className={`flex items-center justify-between transition-colors p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-800 border border-slate-700 hover:border-indigo-500 hover:bg-indigo-950/20' : 'bg-slate-50 border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50'}`}
+                        className={`flex items-center justify-between transition-colors p-3 rounded-lg cursor-default ${theme === 'dark' ? 'bg-slate-800 border border-slate-700 hover:border-indigo-500 hover:bg-indigo-950/20' : 'bg-slate-50 border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50'}`}
+                        style={{ cursor: 'default' }}
                       >
                         <code className={`font-mono text-sm break-all ${theme === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>{wallet}</code>
                         <div className="flex items-center gap-1">
@@ -525,7 +531,7 @@ export default function Home() {
                             <td className="px-4 py-3">
                               <div className="flex flex-wrap gap-1">
                                 {t.networks.map((n) => (
-                                  <span key={n} className={`text-[10px] px-2 py-0.5 rounded-full border ${theme === 'dark' ? 'text-slate-200 border-slate-700 bg-slate-800' : 'text-slate-700 border-slate-200 bg-slate-100'}`}>
+                                  <span key={n} className={`text-[10px] px-2 py-0.5 rounded-full border cursor-default ${theme === 'dark' ? 'text-slate-200 border-slate-700 bg-slate-800' : 'text-slate-700 border-slate-200 bg-slate-100'}`} style={{ cursor: 'default' }}>
                                     {n}
                                   </span>
                                 ))}
@@ -576,8 +582,8 @@ export default function Home() {
                                 <div className={`absolute inset-4 rounded-full ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'} border ${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'}`}></div>
                                 <div className="absolute inset-0 flex items-center justify-center">
                                   <div className={`text-center ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>
-                                    <div className="text-[11px] opacity-70">Allocation</div>
-                                    <div className="text-sm font-semibold">{new Intl.NumberFormat(undefined, { style: 'percent', maximumFractionDigits: 0 }).format(1)}</div>
+                                    <div className="text-[11px] opacity-70">Portfolio Allocation</div>
+                                    <div className="text-sm font-semibold">{new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(total)}</div>
                                   </div>
                                 </div>
                               </div>
