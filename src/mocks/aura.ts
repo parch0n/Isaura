@@ -122,8 +122,8 @@ const MOCK_WALLETS: Record<string, AuraPortfolioEntry[]> = {
 				{ symbol: 'DAI', balance: 30, balanceUSD: 30, address: '0x6B175474E89094C44Da98b954EedeAC495271d0F' },
 				{
 					symbol: 'WBTC',
-					balance: 103.0015,
-					balanceUSD: 103.0015 * 65000,
+					balance: 0.0015,
+					balanceUSD: 0.0015 * 65000,
 					address: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
 				},
 			],

@@ -441,8 +441,9 @@ export default function Home() {
                         );
                       }
                       return (
+                        <>
                         <div className={`overflow-hidden rounded-lg border ${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'}`}>
-                    <table className={`w-full text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>
+                      <table className={`w-full text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>
                       <thead className={`${theme === 'dark' ? 'bg-slate-800' : 'bg-slate-50'}`}>
                         <tr>
                             <th className="text-left px-4 py-3 font-semibold select-none">
@@ -508,6 +509,74 @@ export default function Home() {
                       </tbody>
                     </table>
                         </div>
+
+                        {(() => {
+                          // Build allocation data from current rows
+                          const total = rows.reduce((acc, r) => acc + (r.totalUSD || 0), 0);
+                          if (!total || total <= 0) return null;
+                          // Limit to top 8 and group the rest as Others
+                          const top = [...rows].sort((a, b) => (b.totalUSD || 0) - (a.totalUSD || 0)).slice(0, 8);
+                          const rest = rows.slice(8);
+                          const othersUSD = rest.reduce((acc, r) => acc + (r.totalUSD || 0), 0);
+                          type Seg = { label: string; value: number; color: string };
+                          const palette = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#06B6D4','#84CC16','#F97316','#14B8A6','#E11D48'];
+                          const baseSegs: Seg[] = top.map((r, i) => ({ label: r.symbol, value: r.totalUSD || 0, color: palette[i % palette.length] }));
+                          const threshold = 0.01; // 1% of total
+                          let smallSum = 0;
+                          const kept: Seg[] = [];
+                          for (const s of baseSegs) {
+                            const pct = total > 0 ? s.value / total : 0;
+                            if (pct < threshold) smallSum += s.value; else kept.push(s);
+                          }
+                          const othersCombined = othersUSD + smallSum;
+                          const segsDisplay: Seg[] = [...kept];
+                          if (othersCombined / total >= threshold) {
+                            segsDisplay.push({ label: 'Others', value: othersCombined, color: palette[segsDisplay.length % palette.length] });
+                          }
+                          // Build conic-gradient string
+                          let start = 0;
+                          const parts: string[] = [];
+                          segsDisplay.forEach((s) => {
+                            const angle = (s.value / total) * 360;
+                            parts.push(`${s.color} ${start}deg ${start + angle}deg`);
+                            start += angle;
+                          });
+                          const gradient = `conic-gradient(${parts.join(',')})`;
+
+                          return (
+                            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+                              <div className={`mx-auto relative h-40 w-40 rounded-full`} style={{ backgroundImage: gradient }}>
+                                <div className={`absolute inset-4 rounded-full ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'} border ${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'}`}></div>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className={`text-center ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>
+                                    <div className="text-[11px] opacity-70">Allocation</div>
+                                    <div className="text-sm font-semibold">{new Intl.NumberFormat(undefined, { style: 'percent', maximumFractionDigits: 0 }).format(1)}</div>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="sm:col-span-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {segsDisplay.map((s) => {
+                                    const pct = s.value / total;
+                                    return (
+                                      <div key={s.label} className={`flex items-center justify-between rounded-md px-3 py-2 border ${theme === 'dark' ? 'bg-slate-900/60 border-slate-700' : 'bg-white/70 border-slate-200'}`}>
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: s.color }}></span>
+                                          <span className={`text-sm truncate ${theme === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>{s.label}</span>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                          <span className={`text-sm tabular-nums ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>{new Intl.NumberFormat(undefined, { style: 'percent', maximumFractionDigits: 1 }).format(pct)}</span>
+                                          <span className={`text-xs tabular-nums ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>{new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(s.value)}</span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                        </>
                       );
                     })()}
                   </>
