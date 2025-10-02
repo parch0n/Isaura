@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 
 export default function Home() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -10,6 +10,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'wallets' | 'portfolio'>('wallets');
+  const [defaultedTab, setDefaultedTab] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const router = useRouter();
@@ -55,11 +56,7 @@ export default function Home() {
     }
   }, [wallets, selectedWallet]);
 
-  useEffect(() => {
-    const email = localStorage.getItem("userEmail");
-    setUserEmail(email);
-    fetchWallets();
-  }, []);
+  
 
   useEffect(() => {
     if (activeTab !== 'portfolio') return;
@@ -86,7 +83,7 @@ export default function Home() {
     return () => { cancelled = true; };
   }, [activeTab]);
 
-  const fetchWallets = async () => {
+  const fetchWallets = useCallback(async () => {
     try {
       const res = await fetch("/api/user/wallets");
       const data = await res.json();
@@ -95,12 +92,24 @@ export default function Home() {
         throw new Error(data.error || "Failed to fetch wallets");
       }
 
-      setWallets(Array.isArray(data.wallets) ? data.wallets : []);
+      const list = Array.isArray(data.wallets) ? data.wallets : [];
+      setWallets(list);
+      // Decide default tab once after initial fetch
+      if (!defaultedTab) {
+        setActiveTab(list.length > 0 ? 'portfolio' : 'wallets');
+        setDefaultedTab(true);
+      }
     } catch (error) {
       console.error("Error fetching wallets:", error);
       setError(error instanceof Error ? error.message : "Failed to fetch wallets");
     }
-  };
+  }, [defaultedTab]);
+
+  useEffect(() => {
+    const email = localStorage.getItem("userEmail");
+    setUserEmail(email);
+    fetchWallets();
+  }, [fetchWallets]);
 
   const handleAddWallet = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -260,16 +269,16 @@ export default function Home() {
           {/* Tab Menu as part of card */}
           <div className={`-mb-px flex items-stretch gap-0 border-b rounded-t-2xl overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'}`}>
             <button
-              className={`flex-1 px-6 py-3 transition-colors focus:outline-none border-b-2 cursor-pointer ${activeTab === 'wallets' ? (theme === 'dark' ? 'bg-slate-900 border-indigo-400 text-indigo-300 font-semibold shadow-sm' : 'bg-white border-indigo-600 text-indigo-700 font-semibold shadow-sm') : (theme === 'dark' ? 'bg-slate-800 border-transparent text-slate-300 hover:text-indigo-300' : 'bg-slate-100 border-transparent text-slate-600 hover:text-indigo-700')}`}
-              onClick={() => setActiveTab('wallets')}
-            >
-              Wallets
-            </button>
-            <button
               className={`flex-1 px-6 py-3 transition-colors focus:outline-none border-b-2 cursor-pointer ${activeTab === 'portfolio' ? (theme === 'dark' ? 'bg-slate-900 border-indigo-400 text-indigo-300 font-semibold shadow-sm' : 'bg-white border-indigo-600 text-indigo-700 font-semibold shadow-sm') : (theme === 'dark' ? 'bg-slate-800 border-transparent text-slate-300 hover:text-indigo-300' : 'bg-slate-100 border-transparent text-slate-600 hover:text-indigo-700')}`}
               onClick={() => setActiveTab('portfolio')}
             >
               Portfolio
+            </button>
+            <button
+              className={`flex-1 px-6 py-3 transition-colors focus:outline-none border-b-2 cursor-pointer ${activeTab === 'wallets' ? (theme === 'dark' ? 'bg-slate-900 border-indigo-400 text-indigo-300 font-semibold shadow-sm' : 'bg-white border-indigo-600 text-indigo-700 font-semibold shadow-sm') : (theme === 'dark' ? 'bg-slate-800 border-transparent text-slate-300 hover:text-indigo-300' : 'bg-slate-100 border-transparent text-slate-600 hover:text-indigo-700')}`}
+              onClick={() => setActiveTab('wallets')}
+            >
+              Wallets
             </button>
           </div>
           {/* Card Content */}
@@ -377,20 +386,37 @@ export default function Home() {
             {activeTab === 'portfolio' && (
               <div className="mb-6">
                 <h2 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Portfolio</h2>
-                {/* Wallet selector */}
-                <div className="mb-3 flex items-center gap-2">
-                  <label className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>View:</label>
-                  <select
-                    value={selectedWallet}
-                    onChange={(e) => setSelectedWallet(e.target.value)}
-                    className={`text-sm px-2 py-2 rounded-md border ${theme === 'dark' ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-800'}`}
-                  >
-                    <option value="__combined__">Combined (All Wallets)</option>
-                    {wallets.map((w) => (
-                      <option key={w} value={w}>{w}</option>
-                    ))}
-                  </select>
-                </div>
+                {wallets.length === 0 ? (
+                  <div className={`rounded-lg p-6 border ${theme === 'dark' ? 'text-slate-300 bg-slate-900/60 border-slate-700' : 'text-slate-700 bg-white/70 border-slate-200'}`}>
+                    <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className={`text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>You don’t have any wallets yet.</p>
+                        <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>Add wallet addresses from the Wallets tab to see your portfolio.</p>
+                      </div>
+                      <button
+                        onClick={() => { setActiveTab('wallets'); setTimeout(() => inputRef.current?.focus(), 0); }}
+                        className={`px-3 py-2 rounded-md text-sm font-medium cursor-pointer border ${theme === 'dark' ? 'text-indigo-300 border-slate-700 bg-slate-900/60 hover:bg-slate-800' : 'text-indigo-700 border-slate-200 bg-white/70 hover:bg-slate-100'}`}
+                      >
+                        Go to Wallets
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                  {/* Wallet selector */}
+                  <div className="mb-3 flex items-center gap-2">
+                    <label className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>View:</label>
+                    <select
+                      value={selectedWallet}
+                      onChange={(e) => setSelectedWallet(e.target.value)}
+                      className={`text-sm px-2 py-2 rounded-md border ${theme === 'dark' ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-800'}`}
+                    >
+                      <option value="__combined__">Combined (All Wallets)</option>
+                      {wallets.map((w) => (
+                        <option key={w} value={w}>{w}</option>
+                      ))}
+                    </select>
+                  </div>
                 {portfolioLoading ? (
                   <div className={`rounded-lg p-6 flex items-center justify-center gap-3 ${theme === 'dark' ? 'text-slate-300 bg-slate-800 border border-slate-700' : 'text-slate-600 bg-slate-50 border border-slate-200'}`}>
                     <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
@@ -581,6 +607,8 @@ export default function Home() {
                       );
                     })()}
                   </>
+                )}
+                </>
                 )}
               </div>
             )}
