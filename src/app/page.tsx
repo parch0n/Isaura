@@ -14,6 +14,19 @@ export default function Home() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [portfolioLoading, setPortfolioLoading] = useState(false);
+  const [portfolioError, setPortfolioError] = useState("");
+  const [portfolioTokens, setPortfolioTokens] = useState<Array<{ symbol: string; total: number; totalUSD: number; networks: string[]; logoURI?: string }>>([]);
+
+  const TokenIcon = ({ symbol }: { symbol: string }) => {
+    const sym = (symbol || '').toUpperCase();
+    const label = sym.slice(0, 3) || '?';
+    const bg = theme === 'dark' ? 'bg-slate-700' : 'bg-slate-200';
+    const fg = theme === 'dark' ? 'text-slate-100' : 'text-slate-800';
+    return (
+      <div className={`h-6 w-6 rounded-md flex items-center justify-center text-[10px] font-semibold ${bg} ${fg}`}>{label}</div>
+    );
+  };
 
   // Focus input when newWallet is cleared or wallets change
   useEffect(() => {
@@ -27,6 +40,28 @@ export default function Home() {
     setUserEmail(email);
     fetchWallets();
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'portfolio') return;
+    let cancelled = false;
+    const load = async () => {
+      setPortfolioLoading(true);
+      setPortfolioError("");
+      try {
+        const res = await fetch('/api/user/portfolio', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Failed to load portfolio');
+        if (!cancelled) setPortfolioTokens(Array.isArray(data.tokens) ? data.tokens : []);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to load portfolio';
+        if (!cancelled) setPortfolioError(message);
+      } finally {
+        if (!cancelled) setPortfolioLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [activeTab]);
 
   const fetchWallets = async () => {
     try {
@@ -307,7 +342,50 @@ export default function Home() {
             {activeTab === 'portfolio' && (
               <div className="mb-6">
                 <h2 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Portfolio</h2>
-                <div className={`rounded-lg p-6 border border-dashed ${theme === 'dark' ? 'text-slate-400 bg-slate-800 border-slate-700' : 'text-slate-500 bg-slate-50 border-slate-200'}`}>Portfolio content coming soon...</div>
+                {portfolioLoading ? (
+                  <div className={`rounded-lg p-6 flex items-center justify-center gap-3 ${theme === 'dark' ? 'text-slate-300 bg-slate-800 border border-slate-700' : 'text-slate-600 bg-slate-50 border border-slate-200'}`}>
+                    <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+                    Loading portfolio...
+                  </div>
+                ) : portfolioError ? (
+                  <div role="alert" className={`rounded-md p-3 border ${theme === 'dark' ? 'text-rose-300 bg-rose-950/40 border-rose-900' : 'text-rose-700 bg-rose-50 border-rose-200'}`}>{portfolioError}</div>
+                ) : portfolioTokens.length === 0 ? (
+                  <div className={`rounded-lg p-6 border border-dashed ${theme === 'dark' ? 'text-slate-400 bg-slate-800 border-slate-700' : 'text-slate-500 bg-slate-50 border-slate-200'}`}>No balances found for the added wallets.</div>
+                ) : (
+                  <div className={`overflow-hidden rounded-lg border ${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'}`}>
+                    <table className={`w-full text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>
+                      <thead className={`${theme === 'dark' ? 'bg-slate-800' : 'bg-slate-50'}`}>
+                        <tr>
+                          <th className="text-left px-4 py-3 font-semibold">Token</th>
+                          <th className="text-right px-4 py-3 font-semibold">Total</th>
+                          <th className="text-right px-4 py-3 font-semibold">Value (USD)</th>
+                          <th className="text-right px-4 py-3 font-semibold">Networks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {portfolioTokens.map((t) => (
+                          <tr key={t.symbol} className={`${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'} border-t hover:bg-indigo-50/30 dark:hover:bg-indigo-950/20 transition-colors`}>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                {t.logoURI ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={t.logoURI} alt={t.symbol} className="h-6 w-6 rounded-md object-cover bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700" onError={(ev) => { (ev.currentTarget as HTMLImageElement).style.display = 'none'; (ev.currentTarget.nextSibling as HTMLElement)?.classList.remove('hidden'); }} />
+                                ) : null}
+                                <div className={t.logoURI ? 'hidden' : ''}>
+                                  <TokenIcon symbol={t.symbol} />
+                                </div>
+                                <span className={`${theme === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>{t.symbol}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-right tabular-nums">{new Intl.NumberFormat(undefined, { maximumFractionDigits: 6 }).format(t.total)}</td>
+                            <td className="px-4 py-3 text-right tabular-nums font-medium">{new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(t.totalUSD)}</td>
+                            <td className="px-4 py-3 text-right text-xs">{t.networks.length}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
           </div>
