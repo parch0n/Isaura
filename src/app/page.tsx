@@ -22,6 +22,13 @@ export default function Home() {
   const [selectedWallet, setSelectedWallet] = useState<string>('__combined__');
   const [sortKey, setSortKey] = useState<'symbol' | 'totalUSD'>('totalUSD');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [walletMenuOpen, setWalletMenuOpen] = useState(false);
+  const walletMenuRef = useRef<HTMLDivElement>(null);
+
+  const displayWalletLabel = (w: string) => {
+    // Return full address without shortening
+    return w;
+  };
 
   const toggleSort = (key: 'symbol' | 'totalUSD') => {
     if (sortKey === key) {
@@ -213,6 +220,25 @@ export default function Home() {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
 
+  // Close wallet dropdown on outside click or Escape
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (!walletMenuRef.current) return;
+      if (!walletMenuRef.current.contains(e.target as Node)) {
+        setWalletMenuOpen(false);
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setWalletMenuOpen(false);
+    }
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, []);
+
   const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
 
   return (
@@ -265,7 +291,7 @@ export default function Home() {
             </button>
           </div>
         </div>
-        <div className={`relative rounded-2xl shadow-xl overflow-hidden backdrop-blur-sm ${theme === 'dark' ? 'border border-slate-700 bg-slate-900/80' : 'border border-slate-200 bg-white/80'}`}>
+  <div className={`relative rounded-2xl shadow-xl overflow-visible backdrop-blur-sm ${theme === 'dark' ? 'border border-slate-700 bg-slate-900/80' : 'border border-slate-200 bg-white/80'}`}>
           {/* Tab Menu as part of card */}
           <div className={`-mb-px flex items-stretch gap-0 border-b rounded-t-2xl overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'}`}>
             <button
@@ -391,7 +417,6 @@ export default function Home() {
             )}
             {activeTab === 'portfolio' && (
               <div className="mb-6">
-                <h2 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Portfolio</h2>
                 {wallets.length === 0 ? (
                   <div className={`rounded-lg p-6 border ${theme === 'dark' ? 'text-slate-300 bg-slate-900/60 border-slate-700' : 'text-slate-700 bg-white/70 border-slate-200'}`}>
                     <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -412,16 +437,48 @@ export default function Home() {
                   {/* Wallet selector */}
                   <div className="mb-3 flex items-center gap-2">
                     <label className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>View:</label>
-                    <select
-                      value={selectedWallet}
-                      onChange={(e) => setSelectedWallet(e.target.value)}
-                      className={`text-sm px-2 py-2 rounded-md border ${theme === 'dark' ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-800'}`}
-                    >
-                      <option value="__combined__">Combined (All Wallets)</option>
-                      {wallets.map((w) => (
-                        <option key={w} value={w}>{w}</option>
-                      ))}
-                    </select>
+                    <div ref={walletMenuRef} className="relative inline-block z-20 flex-1">
+                      <button
+                        type="button"
+                        aria-haspopup="listbox"
+                        aria-expanded={walletMenuOpen}
+                        onClick={() => setWalletMenuOpen((o) => !o)}
+                        className={`w-full text-base px-4 py-3 pr-10 rounded-md border box-border text-left cursor-pointer leading-5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${theme === 'dark' ? 'bg-slate-900 border-slate-700 text-slate-200 hover:bg-slate-800' : 'bg-white border-slate-200 text-slate-800 hover:bg-slate-100'}`}
+                        title={selectedWallet === '__combined__' ? 'Combined (All Wallets)' : selectedWallet}
+                      >
+                        <span className="block whitespace-nowrap">
+                          {selectedWallet === '__combined__' ? 'Portfolio (All Wallets)' : displayWalletLabel(selectedWallet)}
+                        </span>
+                        <span className={`absolute inset-y-0 right-2 inline-flex items-center ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                          <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform ${walletMenuOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.585l3.71-3.354a.75.75 0 111.02 1.1l-4.22 3.815a.75.75 0 01-1.02 0L5.25 8.33a.75.75 0 01-.02-1.06z" clipRule="evenodd"/></svg>
+                        </span>
+                      </button>
+                      {walletMenuOpen && (
+                        <div className={`absolute mt-1 left-0 w-full rounded-md border shadow-lg z-50 box-border ${theme === 'dark' ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-800'}`} role="listbox">
+                          <button
+                            role="option"
+                            aria-selected={selectedWallet === '__combined__'}
+                            onClick={() => { setSelectedWallet('__combined__'); setWalletMenuOpen(false); }}
+                            className={`w-full text-left px-4 py-3 cursor-pointer ${selectedWallet === '__combined__' ? (theme === 'dark' ? 'bg-slate-800' : 'bg-slate-100') : (theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-slate-50')}`}
+                          >
+                            Portfolio (All Wallets)
+                          </button>
+                          <div className={`mx-4 my-3 border-t-2 ${theme === 'dark' ? 'border-slate-700' : 'border-slate-300'}`}></div>
+                          {wallets.map((w) => (
+                            <button
+                              key={w}
+                              role="option"
+                              aria-selected={selectedWallet === w}
+                              onClick={() => { setSelectedWallet(w); setWalletMenuOpen(false); }}
+                              className={`w-full text-left px-4 py-3 cursor-pointer ${selectedWallet === w ? (theme === 'dark' ? 'bg-slate-800' : 'bg-slate-100') : (theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-slate-50')}`}
+                              title={w}
+                            >
+                              {displayWalletLabel(w)}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 {portfolioLoading ? (
                   <div className={`rounded-lg p-6 flex items-center justify-center gap-3 ${theme === 'dark' ? 'text-slate-300 bg-slate-800 border border-slate-700' : 'text-slate-600 bg-slate-50 border border-slate-200'}`}>
