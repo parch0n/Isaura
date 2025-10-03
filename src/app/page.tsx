@@ -13,6 +13,7 @@ export default function Home() {
   const [defaultedTab, setDefaultedTab] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [themeReady, setThemeReady] = useState(false);
   const [btcPrice, setBtcPrice] = useState<number | null>(null);
   const [ethPrice, setEthPrice] = useState<number | null>(null);
   const [btcChange, setBtcChange] = useState<number | null>(null);
@@ -216,6 +217,7 @@ export default function Home() {
     const initial = saved === 'dark' || (!saved && prefersDark) ? 'dark' : 'light';
     setTheme(initial);
     if (initial === 'dark') document.documentElement.classList.add('dark');
+    setThemeReady(true);
   }, []);
 
   // Fetch BTC/ETH price and dominance from CoinGecko
@@ -253,10 +255,10 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !themeReady) return;
     localStorage.setItem('theme', theme);
     document.documentElement.classList.toggle('dark', theme === 'dark');
-  }, [theme]);
+  }, [theme, themeReady]);
 
   // Close wallet dropdown on outside click or Escape
   useEffect(() => {
