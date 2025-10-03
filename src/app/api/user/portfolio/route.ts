@@ -6,6 +6,7 @@ import { dbConnect } from '@/lib/mongoose';
 import { fetchWithTimeout } from '@/lib/fetcher';
 import { AuraResponse } from '@/types/aura';
 import { mockAuraResponse } from '@/mocks/aura';
+import { portfolioCache } from '@/lib/cache';
 
 export async function GET() {
 	try {
@@ -26,6 +27,12 @@ export async function GET() {
 		const wallets: string[] = Array.isArray(user.wallets) ? user.wallets : [];
 		if (wallets.length === 0) {
 			return NextResponse.json({ success: true, walletsCount: 0, tokens: [], addresses: [] });
+		}
+
+		const cacheKey = `portfolio:${decoded.email}:${wallets.sort().join(',')}`;
+		const cached = portfolioCache.get(cacheKey);
+		if (cached) {
+			return NextResponse.json(cached);
 		}
 
 		const useMock = process.env.AURA_MOCK === 'true';
@@ -207,13 +214,16 @@ export async function GET() {
 			byWallet[addr] = mapToTokensArray(wmap).sort((a, b) => b.totalUSD - a.totalUSD);
 		}
 
-		return NextResponse.json({
+		const response = {
 			success: true,
 			walletsCount: wallets.length,
 			addresses: wallets,
 			tokens,
 			byWallet,
-		});
+		};
+
+		portfolioCache.set(cacheKey, response, 5 * 60 * 1000);
+		return NextResponse.json(response);
 	} catch (error) {
 		console.error('Error in portfolio summary route:', error);
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
