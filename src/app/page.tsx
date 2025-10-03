@@ -13,6 +13,10 @@ export default function Home() {
   const [defaultedTab, setDefaultedTab] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [btcPrice, setBtcPrice] = useState<number | null>(null);
+  const [ethPrice, setEthPrice] = useState<number | null>(null);
+  const [btcChange, setBtcChange] = useState<number | null>(null);
+  const [ethChange, setEthChange] = useState<number | null>(null);
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [portfolioLoading, setPortfolioLoading] = useState(false);
@@ -214,6 +218,40 @@ export default function Home() {
     if (initial === 'dark') document.documentElement.classList.add('dark');
   }, []);
 
+  // Fetch BTC/ETH price and dominance from CoinGecko
+  useEffect(() => {
+    let mounted = true;
+    const controller = new AbortController();
+
+    const loadMarket = async () => {
+      try {
+        const priceRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true', { signal: controller.signal });
+        if (!priceRes.ok) throw new Error('Failed to load prices');
+        const priceJson = await priceRes.json();
+        if (!mounted) return;
+        const btc = priceJson?.bitcoin?.usd ?? null;
+        const eth = priceJson?.ethereum?.usd ?? null;
+        const btcChg = priceJson?.bitcoin?.usd_24h_change ?? null;
+        const ethChg = priceJson?.ethereum?.usd_24h_change ?? null;
+        setBtcPrice(typeof btc === 'number' ? btc : null);
+        setEthPrice(typeof eth === 'number' ? eth : null);
+        setBtcChange(typeof btcChg === 'number' ? btcChg : null);
+        setEthChange(typeof ethChg === 'number' ? ethChg : null);
+      } catch {
+        if (!mounted) return;
+        // Silent fail for market data
+      }
+    };
+
+    loadMarket();
+    const id = setInterval(loadMarket, 60_000); // refresh every 60s
+    return () => {
+      mounted = false;
+      controller.abort();
+      clearInterval(id);
+    };
+  }, []);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     localStorage.setItem('theme', theme);
@@ -242,10 +280,39 @@ export default function Home() {
   const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
 
   return (
-    <div className={`${theme === 'dark' ? 'min-h-screen bg-gradient-to-b from-slate-900 to-black' : 'min-h-screen bg-gradient-to-b from-slate-50 to-slate-100'} py-16 px-4 sm:px-6 lg:px-8 flex flex-col`}>
+  <div className={`${theme === 'dark' ? 'min-h-screen bg-gradient-to-b from-slate-900 to-black' : 'min-h-screen bg-gradient-to-b from-slate-50 to-slate-100'} py-16 px-4 sm:px-6 lg:px-8 relative flex flex-col`}>
       <div className="flex-1">
-        <div className="max-w-2xl mx-auto">
+        {/* Fixed market bar at the very top of the page */}
+  <div className={`fixed inset-x-0 top-2 z-50 ${theme === 'dark' ? 'bg-slate-900/80 backdrop-blur' : 'bg-slate-50/80 backdrop-blur'}`}>
+          <div className="max-w-2xl mx-auto">
+            <div className="flex items-center justify-between py-1">
+              <div className="flex items-center gap-2 text-sm">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="https://assets.coingecko.com/coins/images/1/standard/bitcoin.png" alt="BTC" className="h-4 w-4 opacity-80" />
+                <span className={`text-slate-600 dark:text-slate-300`}>{btcPrice !== null ? new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(btcPrice) : '—'}</span>
+                {btcChange !== null && (
+                  <span className={`${btcChange >= 0 ? 'text-green-400' : 'text-red-400'} ml-1`}>{btcChange >= 0 ? '+' : ''}{btcChange.toFixed(1)}%</span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 text-sm">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="https://assets.coingecko.com/coins/images/279/standard/ethereum.png" alt="ETH" className="h-4 w-4 opacity-80" />
+                <span className={`text-slate-600 dark:text-slate-300`}>{ethPrice !== null ? new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(ethPrice) : '—'}</span>
+                {ethChange !== null && (
+                  <span className={`${ethChange >= 0 ? 'text-green-400' : 'text-red-400'} ml-1`}>{ethChange >= 0 ? '+' : ''}{ethChange.toFixed(1)}%</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+  <div className="relative max-w-2xl mx-auto mt-8">
         {/* Page-level header with email on the left and actions on the right */}
+        {/* badges moved inside card container (component corners) */}
+
+        {/* Page-level header with email on the left and actions on the right */}
+
         <div className="mb-4 flex items-center justify-between gap-2">
           <div className="min-w-0">
               {userEmail ? (
