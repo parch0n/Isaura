@@ -47,9 +47,11 @@ class MemoryCache {
 }
 
 export const portfolioCache = new MemoryCache();
+export const strategiesCache = new MemoryCache();
 
 if (typeof setInterval !== 'undefined') {
 	setInterval(() => {
 		portfolioCache.cleanup();
+		strategiesCache.cleanup();
 	}, 5 * 60 * 1000);
 }

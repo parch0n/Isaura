@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
+import type { Strategy } from "@/types/aura";
 
 export default function Home() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -9,7 +10,7 @@ export default function Home() {
   const [newWallet, setNewWallet] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'wallets' | 'portfolio'>('wallets');
+  const [activeTab, setActiveTab] = useState<'wallets' | 'portfolio' | 'strategies'>('wallets');
   const [defaultedTab, setDefaultedTab] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -24,15 +25,29 @@ export default function Home() {
   const [portfolioError, setPortfolioError] = useState("");
   const [portfolioTokens, setPortfolioTokens] = useState<Array<{ symbol: string; total: number; totalUSD: number; networks: string[]; logoURI?: string }>>([]);
   const [portfolioByWallet, setPortfolioByWallet] = useState<Record<string, Array<{ symbol: string; total: number; totalUSD: number; networks: string[]; logoURI?: string }>>>({});
+  
+  // Strategies state
+  const [strategiesLoading, setStrategiesLoading] = useState(false);
+  const [strategiesError, setStrategiesError] = useState("");
+  const [strategiesByWallet, setStrategiesByWallet] = useState<Record<string, Strategy[]>>({});
+
   const [selectedWallet, setSelectedWallet] = useState<string>('__combined__');
+  const [selectedWalletStrategies, setSelectedWalletStrategies] = useState<string>('__combined__');
   const [sortKey, setSortKey] = useState<'symbol' | 'totalUSD'>('totalUSD');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [walletMenuOpen, setWalletMenuOpen] = useState(false);
+  const [strategiesMenuOpen, setStrategiesMenuOpen] = useState(false);
   const walletMenuRef = useRef<HTMLDivElement>(null);
+  const strategiesMenuRef = useRef<HTMLDivElement>(null);
 
   const displayWalletLabel = (w: string) => {
     // Return full address without shortening
     return w;
+  };
+
+  const capitalize = (s?: string) => {
+    if (!s) return '';
+    return s.charAt(0).toUpperCase() + s.slice(1);
   };
 
   const toggleSort = (key: 'symbol' | 'totalUSD') => {
@@ -54,6 +69,16 @@ export default function Home() {
     );
   };
 
+  const getRiskColor = (risk: string) => {
+    switch (risk.toLowerCase()) {
+      case 'low': return theme === 'dark' ? 'text-green-400 bg-green-900/20 border-green-800' : 'text-green-700 bg-green-50 border-green-200';
+      case 'moderate': return theme === 'dark' ? 'text-yellow-400 bg-yellow-900/20 border-yellow-800' : 'text-yellow-700 bg-yellow-50 border-yellow-200';
+      case 'high': return theme === 'dark' ? 'text-red-400 bg-red-900/20 border-red-800' : 'text-red-700 bg-red-50 border-red-200';
+      case 'opportunistic': return theme === 'dark' ? 'text-purple-400 bg-purple-900/20 border-purple-800' : 'text-purple-700 bg-purple-50 border-purple-200';
+      default: return theme === 'dark' ? 'text-slate-400 bg-slate-900/20 border-slate-700' : 'text-slate-600 bg-slate-50 border-slate-200';
+    }
+  };
+
   // Focus input when newWallet is cleared or wallets change
   useEffect(() => {
     if (inputRef.current) {
@@ -67,6 +92,19 @@ export default function Home() {
       setSelectedWallet('__combined__');
     }
   }, [wallets, selectedWallet]);
+
+  useEffect(() => {
+    if (selectedWalletStrategies !== '__combined__' && !wallets.includes(selectedWalletStrategies)) {
+      setSelectedWalletStrategies('__combined__');
+    }
+  }, [wallets, selectedWalletStrategies]);
+
+  // When entering strategies tab, default to first wallet if combined is set
+  useEffect(() => {
+    if (activeTab === 'strategies' && wallets.length > 0 && selectedWalletStrategies === '__combined__') {
+      setSelectedWalletStrategies(wallets[0]);
+    }
+  }, [activeTab, wallets, selectedWalletStrategies]);
 
   
 
@@ -89,6 +127,31 @@ export default function Home() {
         if (!cancelled) setPortfolioError(message);
       } finally {
         if (!cancelled) setPortfolioLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [activeTab]);
+
+  // Fetch strategies when strategies tab is active
+  useEffect(() => {
+    if (activeTab !== 'strategies') return;
+    let cancelled = false;
+    const load = async () => {
+      setStrategiesLoading(true);
+      setStrategiesError("");
+      try {
+        const res = await fetch('/api/user/strategies', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Failed to load strategies');
+        if (!cancelled) {
+          setStrategiesByWallet(data.byWallet && typeof data.byWallet === 'object' ? data.byWallet : {});
+        }
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to load strategies';
+        if (!cancelled) setStrategiesError(message);
+      } finally {
+        if (!cancelled) setStrategiesLoading(false);
       }
     };
     load();
@@ -279,13 +342,32 @@ export default function Home() {
     };
   }, []);
 
+  // Close strategies dropdown on outside click or Escape
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (!strategiesMenuRef.current) return;
+      if (!strategiesMenuRef.current.contains(e.target as Node)) {
+        setStrategiesMenuOpen(false);
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setStrategiesMenuOpen(false);
+    }
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, []);
+
   const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
 
   return (
   <div className={`${theme === 'dark' ? 'min-h-screen bg-gradient-to-b from-slate-900 to-black' : 'min-h-screen bg-gradient-to-b from-slate-50 to-slate-100'} py-16 px-4 sm:px-6 lg:px-8 relative flex flex-col`}>
       <div className="flex-1">
         {/* Fixed market bar at the very top of the page */}
-  <div className={`fixed inset-x-0 top-2 z-50 ${theme === 'dark' ? 'bg-slate-900/80 backdrop-blur' : 'bg-slate-50/80 backdrop-blur'}`}>
+  <div className={`fixed inset-x-0 top-2 z-[100] ${theme === 'dark' ? 'bg-slate-900/80 backdrop-blur' : 'bg-slate-50/80 backdrop-blur'}`}>
           <div className="max-w-2xl mx-auto">
             <div className="flex items-center justify-between py-1">
               <div className="flex items-center gap-2 text-sm">
@@ -368,6 +450,12 @@ export default function Home() {
               onClick={() => setActiveTab('portfolio')}
             >
               Portfolio
+            </button>
+            <button
+              className={`flex-1 px-6 py-3 transition-colors focus:outline-none border-b-2 cursor-pointer ${activeTab === 'strategies' ? (theme === 'dark' ? 'bg-slate-900 border-indigo-400 text-indigo-300 font-semibold shadow-sm' : 'bg-white border-indigo-600 text-indigo-700 font-semibold shadow-sm') : (theme === 'dark' ? 'bg-slate-800 border-transparent text-slate-300 hover:text-indigo-300' : 'bg-slate-100 border-transparent text-slate-600 hover:text-indigo-700')}`}
+              onClick={() => setActiveTab('strategies')}
+            >
+              Strategies
             </button>
             <button
               className={`flex-1 px-6 py-3 transition-colors focus:outline-none border-b-2 cursor-pointer ${activeTab === 'wallets' ? (theme === 'dark' ? 'bg-slate-900 border-indigo-400 text-indigo-300 font-semibold shadow-sm' : 'bg-white border-indigo-600 text-indigo-700 font-semibold shadow-sm') : (theme === 'dark' ? 'bg-slate-800 border-transparent text-slate-300 hover:text-indigo-300' : 'bg-slate-100 border-transparent text-slate-600 hover:text-indigo-700')}`}
@@ -658,7 +746,7 @@ export default function Home() {
                               <div className="flex flex-wrap gap-1">
                                 {t.networks.map((n) => (
                                   <span key={n} className={`text-[10px] px-2 py-0.5 rounded-full border cursor-default ${theme === 'dark' ? 'text-slate-200 border-slate-700 bg-slate-800' : 'text-slate-700 border-slate-200 bg-slate-100'}`} style={{ cursor: 'default' }}>
-                                    {n}
+                                    {capitalize(n)}
                                   </span>
                                 ))}
                               </div>
@@ -742,6 +830,193 @@ export default function Home() {
                 )}
                 </>
                 )}
+              </div>
+            )}
+            {activeTab === 'strategies' && (
+              <div className="mb-6">
+                {strategiesLoading ? (
+                  <div className={`rounded-lg p-6 text-center ${theme === 'dark' ? 'text-slate-300 bg-slate-900/60 border border-slate-700' : 'text-slate-700 bg-white/70 border border-slate-200'}`}>
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
+                      Loading strategies...
+                    </div>
+                  </div>
+                ) : strategiesError ? (
+                  <div role="alert" className={`rounded-lg p-6 border ${theme === 'dark' ? 'text-red-300 bg-red-900/20 border-red-800' : 'text-red-700 bg-red-50 border-red-200'}`}>
+                    <div className="flex items-center gap-2">
+                      <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                      {strategiesError}
+                    </div>
+                  </div>
+                ) : wallets.length === 0 ? (
+                  <div className={`rounded-lg p-6 border ${theme === 'dark' ? 'text-slate-300 bg-slate-900/60 border-slate-700' : 'text-slate-700 bg-white/70 border-slate-200'}`}>
+                    <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className={`text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>You don’t have any wallets yet.</p>
+                        <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>Add wallet addresses from the Wallets tab to see your strategies.</p>
+                      </div>
+                      <button
+                        onClick={() => { setActiveTab('wallets'); setTimeout(() => inputRef.current?.focus(), 0); }}
+                        className={`px-3 py-2 rounded-md text-sm font-medium cursor-pointer border ${theme === 'dark' ? 'text-indigo-300 border-slate-700 bg-slate-900/60 hover:bg-slate-800' : 'text-indigo-700 border-slate-200 bg-white/70 hover:bg-slate-100'}`}
+                      >
+                        Go to Wallets
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Wallet selector for strategies */}
+                    <div className="mb-4 flex items-center gap-2">
+                      <label className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>View:</label>
+                      <div ref={strategiesMenuRef} className="relative inline-block z-20 flex-1">
+                        <button
+                          type="button"
+                          aria-haspopup="listbox"
+                          aria-expanded={strategiesMenuOpen}
+                          onClick={() => setStrategiesMenuOpen((o) => !o)}
+                          className={`w-full text-base px-4 py-3 pr-10 rounded-md border box-border text-left cursor-pointer leading-5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${theme === 'dark' ? 'bg-slate-900 border-slate-700 text-slate-200 hover:bg-slate-800' : 'bg-white border-slate-200 text-slate-800 hover:bg-slate-100'}`}
+                          title={selectedWalletStrategies}
+                        >
+                          <span className="block whitespace-nowrap">
+                            {displayWalletLabel(selectedWalletStrategies)}
+                          </span>
+                          <span className={`absolute inset-y-0 right-2 inline-flex items-center ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform ${strategiesMenuOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.585l3.71-3.354a.75.75 0 111.02 1.1l-4.22 3.815a.75.75 0 01-1.02 0L5.25 8.33a.75.75 0 01-.02-1.06z" clipRule="evenodd"/></svg>
+                          </span>
+                        </button>
+                        {strategiesMenuOpen && (
+                          <div className={`absolute mt-1 left-0 w-full rounded-md border shadow-lg z-50 box-border ${theme === 'dark' ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-800'}`} role="listbox">
+                            {wallets.map((w) => (
+                              <button
+                                key={w}
+                                role="option"
+                                aria-selected={selectedWalletStrategies === w}
+                                onClick={() => { setSelectedWalletStrategies(w); setStrategiesMenuOpen(false); }}
+                                className={`w-full text-left px-4 py-3 cursor-pointer ${selectedWalletStrategies === w ? (theme === 'dark' ? 'bg-slate-800' : 'bg-slate-100') : (theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-slate-50')}`}
+                                title={w}
+                              >
+                                {displayWalletLabel(w)}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Strategies display */}
+                    {(() => {
+                      const strategies = (strategiesByWallet[selectedWalletStrategies] || []).map(s => ({ ...s, walletAddress: selectedWalletStrategies }));
+                      
+                      if (strategies.length === 0) {
+                        return (
+                          <div className={`rounded-lg p-6 border border-dashed ${theme === 'dark' ? 'text-slate-400 bg-slate-800 border-slate-700' : 'text-slate-500 bg-slate-50 border-slate-200'}`}>
+                            <div className="text-center">
+                              <svg className="mx-auto h-12 w-12 text-slate-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                <path d="M34 40h10v-4a6 6 0 00-10.712-3.714M34 40H14m20 0v-4a9.971 9.971 0 00-.712-3.714M14 40H4v-4a6 6 0 0110.713-3.714M14 40v-4c0-1.313.253-2.566.713-3.714m0 0A9.971 9.971 0 0124 24c4.21 0 7.813 2.602 9.288 6.286" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                              <p className="mt-2 text-sm">No strategies found for the selected wallet.</p>
+                              <p className="mt-1 text-xs opacity-70">Strategies will appear here once your portfolio is analyzed.</p>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-4">
+                          {strategies.map((strategy, index) => (
+                            <div key={index} className={`rounded-lg border p-6 ${theme === 'dark' ? 'bg-slate-900/60 border-slate-700' : 'bg-white/70 border-slate-200'}`}>
+                              <div className="flex items-start justify-between mb-4">
+                                <div>
+                                  <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>
+                                    {strategy.name || 'Unnamed Strategy'}
+                                  </h3>
+                                </div>
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border cursor-default ${getRiskColor(strategy.risk || 'unknown')}`} style={{ cursor: 'default' }}>
+                                  {strategy.risk ? (strategy.risk.charAt(0).toUpperCase() + strategy.risk.slice(1) + ' Risk') : 'Unknown Risk'}
+                                </span>
+                              </div>
+                              
+                              <div className="space-y-4">
+                                {strategy.actions.map((action, actionIndex) => (
+                                  <div key={actionIndex} className={`rounded-md p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50/50 border-slate-200'}`}>
+                                    <div className="flex items-center gap-2 mb-3">
+                                      <TokenIcon symbol={action.tokens} />
+                                      <span className={`font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>
+                                        {action.tokens}
+                                      </span>
+                                      {action.apy && action.apy !== 'N/A' && action.apy !== 'Variable (N/A)' && (
+                                        <span className={`ml-auto text-sm px-2 py-1 rounded ${theme === 'dark' ? 'bg-green-900/20 text-green-400' : 'bg-green-50 text-green-700'}`}>
+                                          {action.apy} APY
+                                        </span>
+                                      )}
+                                    </div>
+                                    
+                                    <p className={`text-sm mb-3 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                                      {action.description}
+                                    </p>
+                                    
+                                    {/* Networks */}
+                                    {action.networks && action.networks.length > 0 && (
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <span className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>Networks:</span>
+                                        <div className="flex gap-1">
+                                          {action.networks.map((network) => (
+                                            <span key={network} className={`text-xs px-2 py-1 rounded-full cursor-default ${theme === 'dark' ? 'bg-slate-700 text-slate-300 border border-slate-600' : 'bg-slate-100 text-slate-700 border border-slate-300'}`} style={{ cursor: 'default' }}>
+                                              {capitalize(network)}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Operations */}
+                                    {action.operations && action.operations.length > 0 && (
+                                      <div className="flex items-center gap-2 mb-3">
+                                        <span className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>Operations:</span>
+                                        <div className="flex gap-1">
+                                          {action.operations.map((operation) => (
+                                              <span key={operation} className={`text-xs px-2 py-1 rounded-full cursor-default ${theme === 'dark' ? 'bg-slate-700 text-slate-300 border border-slate-600' : 'bg-slate-100 text-slate-700 border border-slate-300'}`} style={{ cursor: 'default' }}>
+                                                {operation}
+                                              </span>
+                                            ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Platforms */}
+                                    {action.platforms && action.platforms.length > 0 && (
+                                      <div>
+                                        <span className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>Recommended platforms:</span>
+                                        <div className="flex flex-wrap gap-2 mt-1">
+                                          {action.platforms.map((platform) => (
+                                            <a
+                                              key={platform.name}
+                                              href={platform.url}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border cursor-pointer hover:opacity-80 transition-opacity ${theme === 'dark' ? 'bg-indigo-900/20 text-indigo-300 border-indigo-800 hover:bg-indigo-900/30' : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'}`}
+                                            >
+                                              {platform.name}
+                                              <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                              </svg>
+                                            </a>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </>
+                )})
               </div>
             )}
           </div>

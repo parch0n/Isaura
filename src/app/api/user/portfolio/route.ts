@@ -3,10 +3,12 @@ import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { User } from '@/models/User';
 import { dbConnect } from '@/lib/mongoose';
-import { fetchWithTimeout } from '@/lib/fetcher';
+import { fetchWithTimeout } from '@/lib/fetch';
 import { AuraResponse } from '@/types/aura';
 import { mockAuraResponse } from '@/mocks/aura';
 import { portfolioCache } from '@/lib/cache';
+
+const CACHE_TTL = 5 * 60 * 1000;
 
 export async function GET() {
 	try {
@@ -43,7 +45,7 @@ export async function GET() {
 			}
 			try {
 				const url = `https://aura.adex.network/api/portfolio/balances?address=${addr}&apiKey=${process.env.AURA_API_KEY}`;
-				const res = await fetchWithTimeout(url, { timeout: 20_000 });
+				const res = await fetchWithTimeout(url, {}, 20000);
 				if (!res.ok) throw new Error(`Aura API error ${res.status}`);
 				const json = (await res.json()) as AuraResponse;
 				return { ok: true as const, addr, json };
@@ -222,7 +224,7 @@ export async function GET() {
 			byWallet,
 		};
 
-		portfolioCache.set(cacheKey, response, 5 * 60 * 1000);
+		portfolioCache.set(cacheKey, response, CACHE_TTL);
 		return NextResponse.json(response);
 	} catch (error) {
 		console.error('Error in portfolio summary route:', error);
