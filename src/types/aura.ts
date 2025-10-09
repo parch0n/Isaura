@@ -46,10 +46,6 @@ export interface Strategy {
 	actions: Action[];
 }
 
-export interface StrategyWithWallet extends Strategy {
-	walletAddress: string;
-}
-
 export interface StrategyLLM {
 	provider: string;
 	model: string;
@@ -72,6 +68,6 @@ export interface AuraStrategiesResponse {
 }
 
 export interface StrategiesApiResponse {
-	strategies: StrategyWithWallet[];
 	byWallet: Record<string, Strategy[]>;
+	combined: Strategy[];
 }

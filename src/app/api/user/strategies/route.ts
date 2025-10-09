@@ -6,7 +6,8 @@ import { User } from '@/models/User';
 import { strategiesCache } from '@/lib/cache';
 import { fetchWithTimeout } from '@/lib/fetch';
 import { mockAuraStrategiesResponse } from '@/mocks/aura';
-import type { Strategy, StrategyWithWallet, AuraStrategiesResponse } from '@/types/aura';
+import { filterCombinedStrategies } from '@/lib/prompt';
+import type { Strategy, AuraStrategiesResponse, StrategiesApiResponse } from '@/types/aura';
 
 const CACHE_TTL = 60 * 60 * 1000;
 
@@ -19,7 +20,9 @@ export async function GET() {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		const decoded = jwt.verify(authToken, process.env.JWT_SECRET as string) as { email: string };
+		const decoded = jwt.verify(authToken, process.env.JWT_SECRET as string) as {
+			email: string;
+		};
 
 		await dbConnect();
 		const user = await User.findOne({ email: decoded.email });
@@ -29,19 +32,19 @@ export async function GET() {
 
 		const wallets: string[] = Array.isArray(user.wallets) ? user.wallets : [];
 		if (wallets.length === 0) {
-			return NextResponse.json({ strategies: [], byWallet: {} });
+			return NextResponse.json({ byWallet: {}, combined: [] });
 		}
 
 		const cacheKey = `strategies_${wallets.sort().join('_')}`;
-		const cached = strategiesCache.get<{ strategies: StrategyWithWallet[]; byWallet: Record<string, Strategy[]> }>(
-			cacheKey
-		);
+		const cached = strategiesCache.get<{
+			byWallet: Record<string, Strategy[]>;
+			combined: Strategy[];
+		}>(cacheKey);
 		if (cached) {
 			return NextResponse.json(cached);
 		}
 
 		const strategiesByWallet: Record<string, Strategy[]> = {};
-		const allStrategies: StrategyWithWallet[] = [];
 
 		const useMock = process.env.AURA_MOCK === 'true';
 		for (const wallet of wallets) {
@@ -67,22 +70,17 @@ export async function GET() {
 				const walletStrategies: Strategy[] = strategiesData.strategies?.[0]?.response || [];
 
 				strategiesByWallet[wallet] = walletStrategies;
-
-				walletStrategies.forEach((strategy: Strategy) => {
-					allStrategies.push({
-						...strategy,
-						walletAddress: wallet,
-					});
-				});
 			} catch (error) {
 				console.error('Error fetching strategies for wallet', wallet, error);
 				strategiesByWallet[wallet] = [];
 			}
 		}
 
-		const result = {
-			strategies: allStrategies,
+		const combinedStrategies = await filterCombinedStrategies(strategiesByWallet);
+
+		const result: StrategiesApiResponse = {
 			byWallet: strategiesByWallet,
+			combined: combinedStrategies,
 		};
 
 		strategiesCache.set(cacheKey, result, CACHE_TTL);
