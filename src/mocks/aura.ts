@@ -154,8 +154,7 @@ const DEFAULT_STRATEGY: StrategyResponse[] = [
 ];
 
 const MOCK_WALLETS: Record<string, AuraPortfolioEntry[]> = {
-	// Wallet A
-	'0xa8835972379e8a89e33dc2cab88aacf22a8dd515': [
+	'0xA8835972379E8a89E33dc2Cab88aAcF22A8dD515': [
 		{
 			network: NETWORKS[0],
 			tokens: [
@@ -205,8 +204,7 @@ const MOCK_WALLETS: Record<string, AuraPortfolioEntry[]> = {
 		},
 	],
 
-	// Wallet B
-	'0x16cfb46435a70b9e318baa1bacb0b5e4bf2dee9e': [
+	'0x16CFB46435A70B9e318BAA1BacB0B5e4Bf2dee9E': [
 		{
 			network: NETWORKS[0],
 			tokens: [
@@ -262,8 +260,7 @@ const MOCK_WALLETS: Record<string, AuraPortfolioEntry[]> = {
 		},
 	],
 
-	// Wallet C (light weights)
-	'0x44217a330d10c3607450364474249ed46579fdec': [
+	'0x44217A330D10c3607450364474249Ed46579fdec': [
 		{
 			network: NETWORKS[0],
 			tokens: [
@@ -297,6 +294,30 @@ const MOCK_WALLETS: Record<string, AuraPortfolioEntry[]> = {
 };
 
 const MOCK_STRATEGIES: Record<string, StrategyResponse[]> = {
+	'0xA8835972379E8a89E33dc2Cab88aAcF22A8dD515': [
+		{
+			llm: {
+				provider: 'AdEx Aura',
+				model: 'adex-aura-0.2',
+			},
+			response: [
+				{
+					name: 'Top up wallet with funds',
+					risk: 'low',
+					actions: [
+						{
+							description:
+								'Your wallet seems to be empty or have very small amounts in it. Consider buying some stablecoins, for example USDT or USDC, or some native crypto like ETH.',
+							tokens: 'USDC, USDT, ETH',
+						},
+					],
+				},
+			],
+			responseTime: 0.12,
+			error: null,
+			hash: '6ef01342bc4f5f8ce86b77f0142832a9126ac716f22bf71f956a4747d210ae3f',
+		},
+	],
 	'0x16CFB46435A70B9e318BAA1BacB0B5e4Bf2dee9E': [
 		{
 			llm: {
@@ -426,31 +447,6 @@ const MOCK_STRATEGIES: Record<string, StrategyResponse[]> = {
 			hash: '54d7a6d097796d34eab32c5d1ad2022989fbfb80e583b15ecbcdb740d3ba572c',
 		},
 	],
-	// Wallet A (from user payload)
-	'0xA8835972379E8a89E33dc2Cab88aAcF22A8dD515': [
-		{
-			llm: {
-				provider: 'AdEx Aura',
-				model: 'adex-aura-0.2',
-			},
-			response: [
-				{
-					name: 'Top up wallet with funds',
-					risk: 'low',
-					actions: [
-						{
-							description:
-								'Your wallet seems to be empty or have very small amounts in it. Consider buying some stablecoins, for example USDT or USDC, or some native crypto like ETH.',
-							tokens: 'USDC, USDT, ETH',
-						},
-					],
-				},
-			],
-			responseTime: 0.12,
-			error: null,
-			hash: '6ef01342bc4f5f8ce86b77f0142832a9126ac716f22bf71f956a4747d210ae3f',
-		},
-	],
 	'0x44217A330D10c3607450364474249Ed46579fdec': [
 		{
 			llm: {
@@ -478,8 +474,7 @@ const MOCK_STRATEGIES: Record<string, StrategyResponse[]> = {
 };
 
 export function mockAuraResponse(address: string): AuraResponse {
-	const key = (address || '').toLowerCase();
-	const portfolio = MOCK_WALLETS[key] || DEFAULT_ENTRIES;
+	const portfolio = MOCK_WALLETS[address] || DEFAULT_ENTRIES;
 	return {
 		address,
 		portfolio,
@@ -489,9 +484,8 @@ export function mockAuraResponse(address: string): AuraResponse {
 }
 
 export function mockAuraStrategiesResponse(address: string): AuraStrategiesResponse {
-	const key = (address || '').toLowerCase();
 	const strategies = MOCK_STRATEGIES[address] || DEFAULT_STRATEGY;
-	const portfolio = MOCK_WALLETS[key] || DEFAULT_ENTRIES;
+	const portfolio = MOCK_WALLETS[address] || DEFAULT_ENTRIES;
 
 	return {
 		address,
