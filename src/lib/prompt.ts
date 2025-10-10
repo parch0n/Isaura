@@ -73,7 +73,7 @@ export async function filterCombinedStrategies(strategiesByWallet: Record<string
 				},
 			],
 			max_completion_tokens: 3000,
-			temperature: 0.1,
+			// temperature: 0.1,
 		});
 
 		const responseContent = completion.choices[0]?.message?.content;
