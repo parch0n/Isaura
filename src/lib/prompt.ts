@@ -44,6 +44,7 @@ export async function filterCombinedStrategies(strategiesByWallet: Record<string
             2. Remove obsolete strategies that don't make sense when considering the entire portfolio
             3. Keep only the most relevant and non-redundant strategies
             4. Preserve the EXACT original strategy structure - do not modify the strategy content, only filter which ones to keep
+			5. Remove "Top up wallet" strategy if there are funds in the other wallets
 
             IMPORTANT: 
             - Return the EXACT strategies from the input (same structure, same text, same everything)
@@ -73,7 +74,6 @@ export async function filterCombinedStrategies(strategiesByWallet: Record<string
 				},
 			],
 			max_completion_tokens: 3000,
-			// temperature: 0.1,
 		});
 
 		const responseContent = completion.choices[0]?.message?.content;
