@@ -8,7 +8,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 export const sendVerificationEmail = async (email: string, code: string) => {
 	await resend.emails.send({
-		from: 'isAura Admin <onboarding@resend.dev>',
+		from: 'isAura Admin <noreply@isaura.xyz>',
 		to: email,
 		subject: 'Your verification code',
 		text: `Your verification code is: ${code}`,
