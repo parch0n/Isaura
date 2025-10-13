@@ -1396,13 +1396,13 @@ export default function Home() {
                             className={`w-full text-base px-4 py-3 pr-10 rounded-md border box-border text-left cursor-pointer leading-5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${theme === "dark" ? "bg-slate-900 border-slate-700 text-slate-200 hover:bg-slate-800" : "bg-white border-slate-200 text-slate-800 hover:bg-slate-100"}`}
                             title={
                               selectedWalletStrategies === "__combined__"
-                                ? "Smart Combined (All Wallets)"
+                                ? "Portfolio (All Wallets)"
                                 : selectedWalletStrategies
                             }
                           >
                             <span className="block whitespace-nowrap">
                               {selectedWalletStrategies === "__combined__"
-                                ? "🤖 Smart Combined (All Wallets)"
+                                ? "Portfolio (All Wallets)"
                                 : displayWalletLabel(selectedWalletStrategies)}
                             </span>
                             <span
@@ -1438,7 +1438,7 @@ export default function Home() {
                                 }}
                                 className={`w-full text-left px-4 py-3 cursor-pointer ${selectedWalletStrategies === "__combined__" ? (theme === "dark" ? "bg-slate-800" : "bg-slate-100") : theme === "dark" ? "hover:bg-slate-800" : "hover:bg-slate-50"}`}
                               >
-                                🤖 Smart Combined (All Wallets)
+                                Portfolio (All Wallets)
                               </button>
                               <div
                                 className={`mx-4 my-3 border-t-2 ${theme === "dark" ? "border-slate-700" : "border-slate-300"}`}
@@ -1524,14 +1524,7 @@ export default function Home() {
                                     >
                                       {strategy.name || "Unnamed Strategy"}
                                     </h3>
-                                    {selectedWalletStrategies ===
-                                      "__combined__" && (
-                                      <p
-                                        className={`text-xs mt-1 ${theme === "dark" ? "text-slate-400" : "text-slate-600"}`}
-                                      >
-                                        🤖 AI-Filtered Portfolio Strategies
-                                      </p>
-                                    )}
+
                                   </div>
                                   <span
                                     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border cursor-default ${getRiskColor(strategy.risk || "unknown")}`}
