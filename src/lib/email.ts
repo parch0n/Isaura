@@ -1,39 +1,21 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
-if (
-	!process.env.EMAIL_SERVER_HOST ||
-	!process.env.EMAIL_SERVER_PORT ||
-	!process.env.EMAIL_SERVER_USER ||
-	!process.env.EMAIL_SERVER_PASSWORD
-) {
-	throw new Error('Email configuration is missing in .env.local');
+if (!process.env.RESEND_API_KEY) {
+	throw new Error('Resend API key is missing in .env.local');
 }
 
-export const transporter = nodemailer.createTransport({
-	host: process.env.EMAIL_SERVER_HOST,
-	port: parseInt(process.env.EMAIL_SERVER_PORT),
-	secure: true,
-	auth: {
-		user: process.env.EMAIL_SERVER_USER,
-		pass: process.env.EMAIL_SERVER_PASSWORD,
-	},
-	tls: {
-		rejectUnauthorized: false, // During development only!
-	},
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export const sendVerificationEmail = async (email: string, code: string) => {
-	const mailOptions = {
-		from: `"Aura Hackathon" ${process.env.EMAIL_SERVER_USER}`,
+	await resend.emails.send({
+		from: 'isAura Admin <onboarding@resend.dev>',
 		to: email,
 		subject: 'Your verification code',
 		text: `Your verification code is: ${code}`,
 		html: `
-      <h1>Your verification code</h1>
-      <p>Use this code to verify your email: <strong>${code}</strong></p>
-      <p>This code will expire in 10 minutes.</p>
-    `,
-	};
-
-	await transporter.sendMail(mailOptions);
+			<h1>Your verification code</h1>
+			<p>Use this code to verify your email: <strong>${code}</strong></p>
+			<p>This code will expire in 10 minutes.</p>
+		`,
+	});
 };
