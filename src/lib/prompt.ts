@@ -8,6 +8,17 @@ const openai = process.env.OPENAI_API_KEY
 	: null;
 
 export async function filterCombinedStrategies(strategiesByWallet: Record<string, Strategy[]>): Promise<Strategy[]> {
+	const walletCount = Object.keys(strategiesByWallet).length;
+
+	if (walletCount <= 1) {
+		console.log('Only one wallet found, skipping AI filtering');
+		const allStrategies: Strategy[] = [];
+		Object.values(strategiesByWallet).forEach((strategies) => {
+			allStrategies.push(...strategies);
+		});
+		return allStrategies;
+	}
+
 	if (!openai) {
 		console.warn('OpenAI API key not configured, returning all strategies');
 		const allStrategies: Strategy[] = [];
