@@ -2,18 +2,22 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
+import { usePrivyAuth } from "@/lib/usePrivyAuth";
 import type { Strategy } from "@/types/aura";
 
 export default function Home() {
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const { user, logout: privyLogout, getAuthHeaders, ready, authenticated, synced } = usePrivyAuth();
   const [wallets, setWallets] = useState<string[]>([]);
   const [newWallet, setNewWallet] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [walletsLoading, setWalletsLoading] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "wallets" | "portfolio" | "strategies"
   >("wallets");
   const [defaultedTab, setDefaultedTab] = useState(false);
+  const hasFetchedWallets = useRef(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [themeReady, setThemeReady] = useState(false);
@@ -214,7 +218,11 @@ export default function Home() {
       setPortfolioLoading(true);
       setPortfolioError("");
       try {
-        const res = await fetch("/api/user/portfolio", { cache: "no-store" });
+        const headers = await getAuthHeaders();
+        const res = await fetch("/api/user/portfolio", { 
+          cache: "no-store",
+          headers 
+        });
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error || "Failed to load portfolio");
         if (!cancelled) {
@@ -237,7 +245,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [activeTab]);
+  }, [activeTab, getAuthHeaders]);
 
   // Fetch strategies when strategies tab is active
   useEffect(() => {
@@ -247,7 +255,11 @@ export default function Home() {
       setStrategiesLoading(true);
       setStrategiesError("");
       try {
-        const res = await fetch("/api/user/strategies", { cache: "no-store" });
+        const headers = await getAuthHeaders();
+        const res = await fetch("/api/user/strategies", { 
+          cache: "no-store",
+          headers 
+        });
         const data = await res.json();
         if (!res.ok)
           throw new Error(data?.error || "Failed to load strategies");
@@ -273,11 +285,16 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [activeTab]);
+  }, [activeTab, getAuthHeaders]);
 
   const fetchWallets = useCallback(async () => {
+    if (hasFetchedWallets.current) return; // Prevent multiple fetches on initial load
+    hasFetchedWallets.current = true;
+    
     try {
-      const res = await fetch("/api/user/wallets");
+      setWalletsLoading(true);
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/user/wallets", { headers });
       const data = await res.json();
 
       if (!res.ok) {
@@ -287,23 +304,58 @@ export default function Home() {
       const list = Array.isArray(data.wallets) ? data.wallets : [];
       setWallets(list);
       // Decide default tab once after initial fetch
-      if (!defaultedTab) {
-        setActiveTab(list.length > 0 ? "portfolio" : "wallets");
-        setDefaultedTab(true);
+      setActiveTab(list.length > 0 ? "portfolio" : "wallets");
+      setDefaultedTab(true);
+    } catch (error) {
+      console.error("Error fetching wallets:", error);
+      setError(
+        error instanceof Error ? error.message : "Failed to fetch wallets",
+      );
+      hasFetchedWallets.current = false; // Reset on error so it can retry
+    } finally {
+      setWalletsLoading(false);
+    }
+  }, [getAuthHeaders]);
+
+  const refetchWallets = useCallback(async () => {
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/user/wallets", { headers });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to fetch wallets");
       }
+
+      const list = Array.isArray(data.wallets) ? data.wallets : [];
+      setWallets(list);
     } catch (error) {
       console.error("Error fetching wallets:", error);
       setError(
         error instanceof Error ? error.message : "Failed to fetch wallets",
       );
     }
-  }, [defaultedTab]);
+  }, [getAuthHeaders]);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (ready && !authenticated) {
+      router.push('/login');
+    }
+  }, [ready, authenticated, router]);
 
   useEffect(() => {
-    const email = localStorage.getItem("userEmail");
-    setUserEmail(email);
-    fetchWallets();
-  }, [fetchWallets]);
+    if (!defaultedTab && authenticated && ready && synced) {
+      fetchWallets();
+    }
+  }, [fetchWallets, defaultedTab, authenticated, ready, synced]);
+
+  // Refetch wallets when wallets tab becomes active
+  useEffect(() => {
+    if (activeTab === "wallets" && defaultedTab && authenticated && ready && synced) {
+      refetchWallets();
+    }
+  }, [activeTab, defaultedTab, authenticated, ready, synced, refetchWallets]);
 
   const handleAddWallet = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -311,9 +363,10 @@ export default function Home() {
     setLoading(true);
 
     try {
+      const headers = await getAuthHeaders();
       const res = await fetch("/api/user/wallets/add", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ wallet: newWallet }),
       });
 
@@ -340,9 +393,10 @@ export default function Home() {
     setLoading(true);
 
     try {
+      const headers = await getAuthHeaders();
       const res = await fetch("/api/user/wallets/remove", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ wallet }),
       });
 
@@ -376,22 +430,13 @@ export default function Home() {
   };
 
   const handleSignOut = async () => {
+    setLoggingOut(true);
     try {
-      const res = await fetch("/api/auth/logout", {
-        method: "POST",
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to logout");
-      }
-
-      // Clear local storage
-      localStorage.removeItem("userEmail");
-
-      // Redirect to login page
+      await privyLogout();
       router.push("/login");
     } catch (error) {
       console.error("Error signing out:", error);
+      router.push("/login");
     }
   };
 
@@ -492,6 +537,41 @@ export default function Home() {
 
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
 
+  // Show loading while checking authentication
+  if (!ready) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${theme === "dark" ? "bg-gradient-to-b from-slate-900 to-black" : "bg-gradient-to-b from-slate-50 to-slate-100"}`}>
+        <div className="text-center">
+          <div className={`mx-auto h-12 w-12 rounded-xl flex items-center justify-center shadow-sm animate-pulse ${theme === "dark" ? "bg-indigo-600 text-white" : "bg-indigo-600 text-white"}`}>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6">
+              <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
+              <path d="M5 17l.75 2.25L8 20l-2.25.75L5 23l-.75-2.25L2 20l2.25-.75L5 17z" />
+              <path d="M19 13l.5 1.5L21 15l-1.5.5L19 17l-.5-1.5L17 15l1.5-.5L19 13z" />
+            </svg>
+          </div>
+          <p className={`text-sm mt-3 ${theme === "dark" ? "text-slate-400" : "text-slate-600"}`}>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show logging out overlay
+  if (loggingOut) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${theme === "dark" ? "bg-gradient-to-b from-slate-900 to-black" : "bg-gradient-to-b from-slate-50 to-slate-100"}`}>
+        <div className="text-center">
+          <div className={`mx-auto h-12 w-12 rounded-xl flex items-center justify-center shadow-sm animate-pulse ${theme === "dark" ? "bg-indigo-600 text-white" : "bg-indigo-600 text-white"}`}>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6">
+              <path d="M7.5 3.75A2.25 2.25 0 0 0 5.25 6v12A2.25 2.25 0 0 0 7.5 20.25h6a.75.75 0 0 0 0-1.5h-6a.75.75 0 0 1-.75-.75V6a.75.75 0 0 1 .75-.75h6a.75.75 0 0 0 0-1.5h-6z" />
+              <path d="M21 12l-4-4v3h-7v2h7v3l4-4z" />
+            </svg>
+          </div>
+          <p className={`text-sm mt-3 ${theme === "dark" ? "text-slate-400" : "text-slate-600"}`}>Signing out...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`${theme === "dark" ? "min-h-screen bg-gradient-to-b from-slate-900 to-black" : "min-h-screen bg-gradient-to-b from-slate-50 to-slate-100"} py-16 px-4 sm:px-6 lg:px-8 relative flex flex-col`}
@@ -564,7 +644,7 @@ export default function Home() {
 
           <div className="mb-4 flex items-center justify-between gap-2">
             <div className="min-w-0">
-              {userEmail ? (
+              {user?.email?.address || user?.wallet?.address ? (
                 <span
                   className={`text-xs h-9 px-3 flex items-center rounded-md border max-w-[40vw] truncate cursor-default ${
                     theme === "dark"
@@ -572,9 +652,9 @@ export default function Home() {
                       : "text-slate-600 border-slate-200 bg-white/70"
                   }`}
                   style={{ minHeight: "2.25rem", cursor: "default" }}
-                  title={userEmail}
+                  title={user?.email?.address || user?.wallet?.address}
                 >
-                  {userEmail}
+                  {user?.email?.address || `${user?.wallet?.address?.slice(0, 6)}...${user?.wallet?.address?.slice(-4)}`}
                 </span>
               ) : null}
             </div>
@@ -666,6 +746,22 @@ export default function Home() {
             <div
               className={`p-8 rounded-b-2xl ${theme === "dark" ? "bg-slate-900" : "bg-white"}`}
             >
+              {/* Show loading state while fetching wallets */}
+              {walletsLoading ? (
+                <div
+                  className={`rounded-lg p-12 flex flex-col items-center justify-center gap-3 ${theme === "dark" ? "text-slate-300 bg-slate-800 border border-slate-700" : "text-slate-600 bg-slate-50 border border-slate-200"}`}
+                >
+                  <div className={`h-12 w-12 rounded-xl flex items-center justify-center shadow-sm animate-pulse ${theme === "dark" ? "bg-indigo-600 text-white" : "bg-indigo-600 text-white"}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6">
+                      <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
+                      <path d="M5 17l.75 2.25L8 20l-2.25.75L5 23l-.75-2.25L2 20l2.25-.75L5 17z" />
+                      <path d="M19 13l.5 1.5L21 15l-1.5.5L19 17l-.5-1.5L17 15l1.5-.5L19 13z" />
+                    </svg>
+                  </div>
+                  <p className="text-sm">Loading your wallets...</p>
+                </div>
+              ) : (
+                <>
               {/* Removed welcome header and email paragraph; email is shown in header */}
               {activeTab === "wallets" && (
                 <>
@@ -700,12 +796,15 @@ export default function Home() {
                           autoFocus
                         />
                         <button
-                          type="submit"
-                          disabled={loading || wallets.length >= 10}
-                          className={`px-4 py-2 rounded-md text-sm font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed ${theme === "dark" ? "bg-indigo-600 hover:bg-indigo-500 focus:ring-indigo-400 focus:ring-offset-slate-900" : "bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500"}`}
-                        >
-                          Add
-                        </button>
+                            type="submit"
+                            disabled={loading || wallets.length >= 10}
+                            className={`px-4 py-2 rounded-md text-sm font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2 ${theme === "dark" ? "bg-indigo-600 hover:bg-indigo-500 focus:ring-indigo-400 focus:ring-offset-slate-900" : "bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500"}`}
+                          >
+                            {loading ? (
+                              <span className="inline-block animate-spin h-4 w-4 mr-1 border-2 border-white border-t-transparent rounded-full"></span>
+                            ) : null}
+                            Add
+                          </button>
                       </div>
                     </form>
                     <div className="space-y-2">
@@ -1707,6 +1806,8 @@ export default function Home() {
                     </>
                   )}
                 </div>
+              )}
+              </>
               )}
             </div>
           </div>

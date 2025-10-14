@@ -1,6 +1,5 @@
-import { NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
-import { cookies } from 'next/headers';
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyPrivyToken } from '@/lib/privy-server';
 import { dbConnect } from '@/lib/mongoose';
 import { User } from '@/models/User';
 import { strategiesCache } from '@/lib/cache';
@@ -11,21 +10,12 @@ import type { Strategy, AuraStrategiesResponse, StrategiesApiResponse } from '@/
 
 const CACHE_TTL = 60 * 60 * 1000;
 
-export async function GET() {
+export async function GET(request: NextRequest) {
 	try {
-		const cookieStore = await cookies();
-		const authToken = cookieStore.get('authToken')?.value;
-
-		if (!authToken) {
-			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-		}
-
-		const decoded = jwt.verify(authToken, process.env.JWT_SECRET as string) as {
-			email: string;
-		};
+		const { userId } = await verifyPrivyToken(request);
 
 		await dbConnect();
-		const user = await User.findOne({ email: decoded.email });
+		const user = await User.findOne({ privyUserId: userId });
 		if (!user) {
 			return NextResponse.json({ error: 'User not found' }, { status: 404 });
 		}
@@ -35,7 +25,7 @@ export async function GET() {
 			return NextResponse.json({ byWallet: {}, combined: [] });
 		}
 
-		const cacheKey = `strategies:${decoded.email}:${wallets.sort().join(',')}`;
+		const cacheKey = `strategies:${userId}:${wallets.sort().join(',')}`;
 		const cached = strategiesCache.get<{
 			byWallet: Record<string, Strategy[]>;
 			combined: Strategy[];

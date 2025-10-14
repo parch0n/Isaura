@@ -1,16 +1,16 @@
 import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema({
+	privyUserId: {
+		type: String,
+		unique: true,
+		sparse: true,
+	},
 	email: {
 		type: String,
-		required: true,
-		unique: true,
 		trim: true,
 		lowercase: true,
-	},
-	emailVerified: {
-		type: Boolean,
-		default: false,
+		sparse: true,
 	},
 	wallets: {
 		type: [String],

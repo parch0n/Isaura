@@ -2,22 +2,26 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-	const authToken = request.cookies.get('authToken');
 	const isLoginPage = request.nextUrl.pathname === '/login';
 
-	// If trying to access login page while logged in, redirect to home
-	if (isLoginPage && authToken) {
-		return NextResponse.redirect(new URL('/', request.url));
-	}
+	const cookies = request.cookies.getAll();
+	const hasPrivyCookies = cookies.some(
+		(cookie) => cookie.name.includes('privy') || cookie.name.includes('authToken')
+	);
 
-	// If trying to access protected route without being logged in, redirect to login
-	if (!isLoginPage && !authToken) {
-		return NextResponse.redirect(new URL('/login', request.url));
+	if (isLoginPage && hasPrivyCookies) {
+		const authCookie = cookies.find(
+			(cookie) => cookie.name.includes('token') && cookie.value && cookie.value.length > 20
+		);
+
+		if (authCookie) {
+			return NextResponse.redirect(new URL('/', request.url));
+		}
 	}
 
 	return NextResponse.next();
 }
 
 export const config = {
-	matcher: ['/', '/login'],
+	matcher: ['/login'],
 };

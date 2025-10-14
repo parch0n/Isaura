@@ -1,6 +1,5 @@
-import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import jwt from 'jsonwebtoken';
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyPrivyToken } from '@/lib/privy-server';
 import { User } from '@/models/User';
 import { dbConnect } from '@/lib/mongoose';
 import { fetchWithTimeout } from '@/lib/fetch';
@@ -10,18 +9,12 @@ import { portfolioCache } from '@/lib/cache';
 
 const CACHE_TTL = 5 * 60 * 1000;
 
-export async function GET() {
+export async function GET(request: NextRequest) {
 	try {
-		const cookieStore = await cookies();
-		const authToken = cookieStore.get('authToken')?.value;
-		if (!authToken) {
-			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-		}
-
-		const decoded = jwt.verify(authToken, process.env.JWT_SECRET as string) as { email: string };
+		const { userId } = await verifyPrivyToken(request);
 
 		await dbConnect();
-		const user = await User.findOne({ email: decoded.email });
+		const user = await User.findOne({ privyUserId: userId });
 		if (!user) {
 			return NextResponse.json({ error: 'User not found' }, { status: 404 });
 		}
@@ -31,7 +24,7 @@ export async function GET() {
 			return NextResponse.json({ success: true, walletsCount: 0, tokens: [], addresses: [] });
 		}
 
-		const cacheKey = `portfolio:${decoded.email}:${wallets.sort().join(',')}`;
+		const cacheKey = `portfolio:${userId}:${wallets.sort().join(',')}`;
 		const cached = portfolioCache.get(cacheKey);
 		if (cached) {
 			return NextResponse.json(cached);
