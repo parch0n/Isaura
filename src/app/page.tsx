@@ -84,6 +84,64 @@ export default function Home() {
     }
   };
 
+  const formatLargeNumber = (value: number): string => {
+    const absValue = Math.abs(value);
+    
+    if (absValue >= 1_000_000_000) {
+      // Billions
+      const billions = value / 1_000_000_000;
+      return `$${new Intl.NumberFormat(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(billions)}B`;
+    } else if (absValue >= 1_000_000) {
+      // Millions
+      const millions = value / 1_000_000;
+      return `$${new Intl.NumberFormat(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(millions)}M`;
+    } else {
+      // Less than a million, use regular formatting
+      return new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 2,
+      }).format(value);
+    }
+  };
+
+  const formatTokenCount = (value: number, totalUSD?: number): string => {
+    const absValue = Math.abs(value);
+    
+    if (absValue >= 1_000_000_000) {
+      // Billions
+      const billions = value / 1_000_000_000;
+      return `${new Intl.NumberFormat(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(billions)}B`;
+    } else if (absValue >= 1_000_000) {
+      // Millions
+      const millions = value / 1_000_000;
+      return `${new Intl.NumberFormat(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(millions)}M`;
+    } else {
+      // Calculate price per token
+      const pricePerToken = totalUSD !== undefined && value !== 0 ? totalUSD / value : 0;
+      // For tokens cheaper than $5000 per token, use max 3 decimals
+      // Otherwise use up to 6 decimals
+      const isCheapToken = pricePerToken < 5000;
+      const maxDecimals = isCheapToken ? 3 : 6;
+      
+      return new Intl.NumberFormat(undefined, {
+        maximumFractionDigits: maxDecimals,
+      }).format(value);
+    }
+  };
+
   const TokenIcon = ({ symbol }: { symbol: string }) => {
     const sym = (symbol || "").toUpperCase();
     const label = sym.slice(0, 3) || "?";
@@ -951,11 +1009,7 @@ export default function Home() {
                                     Total Value
                                   </div>
                                   <div className="text-base font-semibold">
-                                    {new Intl.NumberFormat(undefined, {
-                                      style: "currency",
-                                      currency: "USD",
-                                      maximumFractionDigits: 2,
-                                    }).format(totalUSD)}
+                                    {formatLargeNumber(totalUSD)}
                                   </div>
                                 </div>
                                 <div
@@ -1118,16 +1172,10 @@ export default function Home() {
                                             </div>
                                           </td>
                                           <td className="px-4 py-3 text-right tabular-nums">
-                                            {new Intl.NumberFormat(undefined, {
-                                              maximumFractionDigits: 6,
-                                            }).format(t.total)}
+                                            {formatTokenCount(t.total, t.totalUSD)}
                                           </td>
                                           <td className="px-4 py-3 text-right tabular-nums font-medium">
-                                            {new Intl.NumberFormat(undefined, {
-                                              style: "currency",
-                                              currency: "USD",
-                                              maximumFractionDigits: 2,
-                                            }).format(t.totalUSD)}
+                                            {formatLargeNumber(t.totalUSD)}
                                           </td>
                                           <td className="px-4 py-3">
                                             <div className="flex flex-wrap gap-1">
@@ -1238,15 +1286,7 @@ export default function Home() {
                                               Portfolio Allocation
                                             </div>
                                             <div className="text-sm font-semibold">
-                                              {new Intl.NumberFormat(
-                                                undefined,
-                                                {
-                                                  style: "currency",
-                                                  currency: "USD",
-                                                  minimumFractionDigits: 2,
-                                                  maximumFractionDigits: 2,
-                                                },
-                                              ).format(total)}
+                                              {formatLargeNumber(total)}
                                             </div>
                                           </div>
                                         </div>
@@ -1288,14 +1328,7 @@ export default function Home() {
                                                   <span
                                                     className={`text-xs tabular-nums ${theme === "dark" ? "text-slate-400" : "text-slate-500"}`}
                                                   >
-                                                    {new Intl.NumberFormat(
-                                                      undefined,
-                                                      {
-                                                        style: "currency",
-                                                        currency: "USD",
-                                                        maximumFractionDigits: 0,
-                                                      },
-                                                    ).format(s.value)}
+                                                    {formatLargeNumber(s.value)}
                                                   </span>
                                                 </div>
                                               </div>
