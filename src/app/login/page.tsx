@@ -81,7 +81,7 @@ export default function Login() {
 
   return (
     <div className={`min-h-screen flex items-start justify-center ${isDark ? 'bg-gradient-to-b from-slate-900 to-black' : 'bg-gradient-to-b from-slate-50 to-slate-100'} pt-12 pb-8 px-4 sm:px-6 lg:px-8`}>
-      <div className="w-full max-w-md">
+  <div className="w-full max-w-[498px]">
         <div className={`rounded-2xl shadow-xl overflow-hidden backdrop-blur-sm border ${isDark ? 'bg-slate-900/80 border-slate-700' : 'bg-white/80 border-slate-200'}`}>
           <div className="p-8">
             <div className="text-center mb-6">

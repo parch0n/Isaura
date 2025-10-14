@@ -501,7 +501,7 @@ export default function Home() {
         <div
           className={`fixed inset-x-0 top-2 z-[100] ${theme === "dark" ? "bg-slate-900/80 backdrop-blur" : "bg-slate-50/80 backdrop-blur"}`}
         >
-          <div className="max-w-2xl mx-auto">
+          <div className="max-w-[772px] mx-auto">
             <div className="flex items-center justify-between py-1">
               <div className="flex items-center gap-2 text-sm">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -556,7 +556,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="relative max-w-2xl mx-auto mt-8">
+  <div className="relative max-w-[772px] mx-auto mt-8">
           {/* Page-level header with email on the left and actions on the right */}
           {/* badges moved inside card container (component corners) */}
 
@@ -1714,7 +1714,7 @@ export default function Home() {
       </div>
       {/* Sticky Footer at bottom */}
       <footer className="mt-auto">
-        <div className="max-w-2xl mx-auto">
+  <div className="max-w-[772px] mx-auto">
           <p
             className={`text-xs text-center ${theme === "dark" ? "text-slate-500" : "text-slate-500"}`}
           >
