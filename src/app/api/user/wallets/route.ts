@@ -1,26 +1,15 @@
-import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import jwt from 'jsonwebtoken';
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyPrivyToken } from '@/lib/privy-server';
 import { User } from '@/models/User';
 import { dbConnect } from '@/lib/mongoose';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
 	try {
-		// Get the auth token
-		const cookieStore = await cookies();
-		const authToken = cookieStore.get('authToken')?.value;
-
-		if (!authToken) {
-			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-		}
-
-		// Verify the token
-		const decoded = jwt.verify(authToken, process.env.JWT_SECRET as string) as { email: string };
+		const { userId } = await verifyPrivyToken(request);
 
 		await dbConnect();
 
-		// Get user
-		const user = await User.findOne({ email: decoded.email });
+		const user = await User.findOne({ privyUserId: userId });
 
 		if (!user) {
 			return NextResponse.json({ error: 'User not found' }, { status: 404 });
