@@ -45,7 +45,7 @@ export async function GET() {
 			}
 			try {
 				const url = `https://aura.adex.network/api/portfolio/balances?address=${addr}&apiKey=${process.env.AURA_API_KEY}`;
-				const res = await fetchWithTimeout(url, {}, 20000);
+				const res = await fetchWithTimeout(url, {}, 60000);
 				if (!res.ok) throw new Error(`Aura API error ${res.status}`);
 				const json = (await res.json()) as AuraResponse;
 				return { ok: true as const, addr, json };
