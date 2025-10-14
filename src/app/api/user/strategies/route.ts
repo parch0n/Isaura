@@ -35,7 +35,7 @@ export async function GET() {
 			return NextResponse.json({ byWallet: {}, combined: [] });
 		}
 
-		const cacheKey = `strategies_${wallets.sort().join('_')}`;
+		const cacheKey = `strategies:${decoded.email}:${wallets.sort().join(',')}`;
 		const cached = strategiesCache.get<{
 			byWallet: Record<string, Strategy[]>;
 			combined: Strategy[];
@@ -44,10 +44,9 @@ export async function GET() {
 			return NextResponse.json(cached);
 		}
 
-		const strategiesByWallet: Record<string, Strategy[]> = {};
-
 		const useMock = process.env.AURA_MOCK === 'true';
-		for (const wallet of wallets) {
+
+		const requests = wallets.map(async (wallet) => {
 			try {
 				let strategiesData: AuraStrategiesResponse;
 
@@ -56,25 +55,25 @@ export async function GET() {
 				} else {
 					const auraUrl = `https://aura.adex.network/api/portfolio/strategies?address=${wallet}&apiKey=${process.env.AURA_API_KEY}`;
 					console.log('Fetching strategies from Aura API:', auraUrl);
-
 					const response = await fetchWithTimeout(auraUrl, {}, 15000);
-
 					if (!response.ok) {
-						console.error('Aura API error for wallet', wallet, response.status, response.statusText);
-						continue;
+						throw new Error(`Aura API error ${response.status} ${response.statusText}`);
 					}
-
-					strategiesData = await response.json();
+					strategiesData = (await response.json()) as AuraStrategiesResponse;
 				}
 
 				const walletStrategies: Strategy[] = strategiesData.strategies?.[0]?.response || [];
-
-				strategiesByWallet[wallet] = walletStrategies;
+				return { wallet, strategies: walletStrategies };
 			} catch (error) {
 				console.error('Error fetching strategies for wallet', wallet, error);
-				strategiesByWallet[wallet] = [];
+				return { wallet, strategies: [] as Strategy[] };
 			}
-		}
+		});
+
+		const results = await Promise.all(requests);
+		const strategiesByWallet: Record<string, Strategy[]> = Object.fromEntries(
+			results.map((r) => [r.wallet, r.strategies])
+		);
 
 		const combinedStrategies = await filterCombinedStrategies(strategiesByWallet);
 
