@@ -58,7 +58,6 @@ export async function GET() {
 
 		const succeeded = settled.filter((r): r is { ok: true; addr: string; json: AuraResponse } => r.ok);
 
-		// Aggregate by token symbol and collect representative contract addresses per chain for logo resolution
 		const aggMap = new Map<
 			string,
 			{
@@ -70,7 +69,6 @@ export async function GET() {
 			}
 		>();
 
-		// Per-wallet aggregation map: wallet address -> token symbol -> aggregated record
 		const perWalletMap = new Map<
 			string,
 			Map<
@@ -95,6 +93,11 @@ export async function GET() {
 				for (const tok of entry.tokens || []) {
 					if (!tok?.symbol) continue;
 					const key = tok.symbol.trim();
+
+					if (key === 'ETH' && tok.address && tok.address !== '0x0000000000000000000000000000000000000000') {
+						continue;
+					}
+
 					if (!aggMap.has(key)) {
 						aggMap.set(key, {
 							symbol: key,
@@ -112,7 +115,6 @@ export async function GET() {
 						cur.addressesByChainId.set(chainId, tok.address);
 					}
 
-					// Update per-wallet aggregation
 					if (!walletMap.has(key)) {
 						walletMap.set(key, {
 							symbol: key,
@@ -153,7 +155,7 @@ export async function GET() {
 		function buildLogoURI(chainId: string, address: string): string | null {
 			const slug = chainIdToTW[chainId];
 			if (!slug || !address) return null;
-			// Handle native coin (zero address or 0xeeee... placeholders) using chain info logo
+
 			const lower = address.toLowerCase();
 			if (
 				lower === '0x0000000000000000000000000000000000000000' ||
@@ -161,7 +163,7 @@ export async function GET() {
 			) {
 				return `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${slug}/info/logo.png`;
 			}
-			// Uses TrustWallet assets repository raw URL; expects checksummed address
+
 			return `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${slug}/assets/${address}/logo.png`;
 		}
 
