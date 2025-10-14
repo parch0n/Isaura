@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 				} else {
 					const auraUrl = `https://aura.adex.network/api/portfolio/strategies?address=${wallet}&apiKey=${process.env.AURA_API_KEY}`;
 					console.log('Fetching strategies from Aura API:', auraUrl);
-					const response = await fetchWithTimeout(auraUrl, {}, 60000);
+					const response = await fetchWithTimeout(auraUrl, {}, 120000);
 					if (!response.ok) {
 						throw new Error(`Aura API error ${response.status} ${response.statusText}`);
 					}
