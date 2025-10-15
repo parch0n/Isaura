@@ -30,10 +30,31 @@ export async function POST(request: NextRequest) {
 
 		let user = await User.findOne({ privyUserId: userId });
 		if (!user) {
-			user = await User.create({
-				privyUserId: userId,
-				wallets: [],
-			});
+			try {
+				user = await User.create({
+					privyUserId: userId,
+					lastLoginAt: new Date(),
+					wallets: [],
+				});
+			} catch (createError: unknown) {
+				// Handle duplicate key error (race condition)
+				if (
+					createError &&
+					typeof createError === 'object' &&
+					'code' in createError &&
+					createError.code === 11000
+				) {
+					// User was created by another request, fetch it
+					user = await User.findOne({ privyUserId: userId });
+					if (!user) {
+						throw new Error('User creation failed');
+					}
+				} else {
+					throw createError;
+				}
+			}
+		} else {
+			user = await User.findOneAndUpdate({ privyUserId: userId }, { lastLoginAt: new Date() }, { new: true });
 		}
 
 		const jwtToken = signJWT({
@@ -45,10 +66,6 @@ export async function POST(request: NextRequest) {
 		return NextResponse.json({
 			success: true,
 			token: jwtToken,
-			user: {
-				id: user._id,
-				privyUserId: user.privyUserId,
-			},
 		});
 	} catch (error) {
 		console.error('Error in login route:', error);
