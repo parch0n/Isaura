@@ -1473,12 +1473,29 @@ export default function Home() {
                 <div className="mb-6">
                   {strategiesLoading ? (
                     <div
-                      className={`rounded-lg p-6 text-center ${theme === "dark" ? "text-slate-300 bg-slate-900/60 border border-slate-700" : "text-slate-700 bg-white/70 border border-slate-200"}`}
+                      className={`rounded-lg p-6 flex items-center justify-center gap-3 ${theme === "dark" ? "text-slate-300 bg-slate-800 border border-slate-700" : "text-slate-600 bg-slate-50 border border-slate-200"}`}
                     >
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
-                        Loading strategies...
-                      </div>
+                      <svg
+                        className="h-5 w-5 animate-spin"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                        ></path>
+                      </svg>
+                      Loading strategies...
                     </div>
                   ) : strategiesError ? (
                     <div
