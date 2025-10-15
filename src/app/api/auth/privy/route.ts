@@ -17,17 +17,12 @@ export async function POST(request: Request) {
 			const userData: {
 				privyUserId: string;
 				lastLoginAt: Date;
-				email?: string;
 				wallets?: string[];
 			} = {
 				privyUserId,
 				lastLoginAt: new Date(),
 				wallets: [],
 			};
-
-			if (email) {
-				userData.email = email;
-			}
 
 			try {
 				user = await User.create(userData);
@@ -58,7 +53,7 @@ export async function POST(request: Request) {
 			user: {
 				id: user._id,
 				privyUserId: user.privyUserId,
-				email: user.email,
+				email,
 				wallets: user.wallets,
 			},
 		});

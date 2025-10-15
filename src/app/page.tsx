@@ -74,6 +74,28 @@ export default function Home() {
     return w;
   };
 
+  const shortenAddress = (address: string): string => {
+    // Shorten wallet address (e.g., "0x1234...5678")
+    if (!address || address.length < 10) return address;
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
+  const maskEmail = (email: string): string => {
+    // Mask email for privacy (e.g., "abc***xyz@example.com")
+    const [localPart, domain] = email.split('@');
+    if (!localPart || !domain) return email;
+    
+    // If local part is too short (6 or less), show first char + ***
+    if (localPart.length <= 6) {
+      const firstChar = localPart.substring(0, 1);
+      return `${firstChar}***@${domain}`;
+    }
+    
+    const firstThree = localPart.substring(0, 3);
+    const lastThree = localPart.substring(localPart.length - 3);
+    return `${firstThree}***${lastThree}@${domain}`;
+  };
+
   const capitalize = (s?: string) => {
     if (!s) return "";
     return s.charAt(0).toUpperCase() + s.slice(1);
@@ -652,9 +674,9 @@ export default function Home() {
                       : "text-slate-600 border-slate-200 bg-white/70"
                   }`}
                   style={{ minHeight: "2.25rem", cursor: "default" }}
-                  title={user?.email?.address || user?.wallet?.address}
+                  title={user?.email?.address ? "Email (masked for privacy)" : user?.wallet?.address}
                 >
-                  {user?.email?.address || `${user?.wallet?.address?.slice(0, 6)}...${user?.wallet?.address?.slice(-4)}`}
+                  {user?.email?.address ? maskEmail(user.email.address) : shortenAddress(user?.wallet?.address || '')}
                 </span>
               ) : null}
             </div>

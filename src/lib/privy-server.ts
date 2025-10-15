@@ -19,7 +19,7 @@ export async function verifyPrivyToken(request: NextRequest) {
 
 		return {
 			userId: claims.userId,
-			appId: claims.appId,
+			appId: claims.appId, // remove
 		};
 	} catch (error) {
 		console.error('Error verifying Privy token:', error);
