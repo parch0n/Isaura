@@ -240,7 +240,7 @@ export default function Home() {
       setPortfolioLoading(true);
       setPortfolioError("");
       try {
-        const headers = await getAuthHeaders();
+        const headers = getAuthHeaders();
         const res = await fetch("/api/user/portfolio", { 
           cache: "no-store",
           headers 
@@ -277,7 +277,7 @@ export default function Home() {
       setStrategiesLoading(true);
       setStrategiesError("");
       try {
-        const headers = await getAuthHeaders();
+        const headers = getAuthHeaders();
         const res = await fetch("/api/user/strategies", { 
           cache: "no-store",
           headers 
