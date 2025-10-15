@@ -6,13 +6,19 @@ import { strategiesCache } from '@/lib/cache';
 import { fetchWithTimeout } from '@/lib/fetch';
 import { mockAuraStrategiesResponse } from '@/mocks/aura';
 import { filterCombinedStrategies } from '@/lib/prompt';
+import { decryptWallets } from '@/lib/encryption';
 import type { Strategy, AuraStrategiesResponse, StrategiesApiResponse } from '@/types/aura';
 
 const CACHE_TTL = 60 * 60 * 1000;
 
 export async function GET(request: NextRequest) {
 	try {
-		const { userId } = await verifyAuthToken(request);
+		const { userId, walletAddress, email } = await verifyAuthToken(request);
+
+		const encryptionKey = walletAddress || email;
+		if (!encryptionKey) {
+			return NextResponse.json({ error: 'Invalid JWT payload' }, { status: 400 });
+		}
 
 		await dbConnect();
 		const user = await User.findOne({ privyUserId: userId });
@@ -20,10 +26,12 @@ export async function GET(request: NextRequest) {
 			return NextResponse.json({ error: 'User not found' }, { status: 404 });
 		}
 
-		const wallets: string[] = Array.isArray(user.wallets) ? user.wallets : [];
-		if (wallets.length === 0) {
+		const encryptedWallets: string[] = Array.isArray(user.wallets) ? user.wallets : [];
+		if (encryptedWallets.length === 0) {
 			return NextResponse.json({ byWallet: {}, combined: [] });
 		}
+
+		const wallets = decryptWallets(encryptedWallets, encryptionKey);
 
 		const cacheKey = `strategies:${userId}:${wallets.sort().join(',')}`;
 		const cached = strategiesCache.get<{

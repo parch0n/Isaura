@@ -14,15 +14,16 @@ export async function POST(request: NextRequest) {
 		const privyToken = authHeader.split(' ')[1];
 		const claims = await privy.verifyAuthToken(privyToken);
 		const userId = claims.userId;
+		const privyUser = await privy.getUser(userId);
 
 		let walletAddress: string | undefined;
 		let email: string | undefined;
 
-		if ('wallet' in claims && claims.wallet) {
-			walletAddress = (claims.wallet as { address: string }).address;
+		if (privyUser.wallet?.address) {
+			walletAddress = privyUser.wallet.address;
 		}
-		if ('email' in claims && claims.email) {
-			email = (claims.email as { address: string }).address;
+		if (privyUser.email?.address) {
+			email = privyUser.email.address;
 		}
 
 		await dbConnect();

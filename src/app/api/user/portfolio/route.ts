@@ -6,12 +6,18 @@ import { fetchWithTimeout } from '@/lib/fetch';
 import { AuraResponse } from '@/types/aura';
 import { mockAuraResponse } from '@/mocks/aura';
 import { portfolioCache } from '@/lib/cache';
+import { decryptWallets } from '@/lib/encryption';
 
 const CACHE_TTL = 5 * 60 * 1000;
 
 export async function GET(request: NextRequest) {
 	try {
-		const { userId } = await verifyAuthToken(request);
+		const { userId, walletAddress, email } = await verifyAuthToken(request);
+
+		const encryptionKey = walletAddress || email;
+		if (!encryptionKey) {
+			return NextResponse.json({ error: 'Invalid JWT payload' }, { status: 400 });
+		}
 
 		await dbConnect();
 		const user = await User.findOne({ privyUserId: userId });
@@ -19,10 +25,12 @@ export async function GET(request: NextRequest) {
 			return NextResponse.json({ error: 'User not found' }, { status: 404 });
 		}
 
-		const wallets: string[] = Array.isArray(user.wallets) ? user.wallets : [];
-		if (wallets.length === 0) {
+		const encryptedWallets: string[] = Array.isArray(user.wallets) ? user.wallets : [];
+		if (encryptedWallets.length === 0) {
 			return NextResponse.json({ success: true, walletsCount: 0, tokens: [], addresses: [] });
 		}
+
+		const wallets = decryptWallets(encryptedWallets, encryptionKey);
 
 		const cacheKey = `portfolio:${userId}:${wallets.sort().join(',')}`;
 		const cached = portfolioCache.get(cacheKey);
