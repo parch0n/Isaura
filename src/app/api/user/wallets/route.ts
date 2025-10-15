@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyPrivyToken } from '@/lib/privy-server';
+import { verifyAuthToken } from '@/lib/jwt';
 import { User } from '@/models/User';
 import { dbConnect } from '@/lib/mongoose';
 
 export async function GET(request: NextRequest) {
 	try {
-		const { userId } = await verifyPrivyToken(request);
+		const { userId } = await verifyAuthToken(request);
 
 		await dbConnect();
 

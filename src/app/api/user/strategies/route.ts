@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyPrivyToken } from '@/lib/privy-server';
+import { verifyAuthToken } from '@/lib/jwt';
 import { dbConnect } from '@/lib/mongoose';
 import { User } from '@/models/User';
 import { strategiesCache } from '@/lib/cache';
@@ -12,7 +12,7 @@ const CACHE_TTL = 60 * 60 * 1000;
 
 export async function GET(request: NextRequest) {
 	try {
-		const { userId } = await verifyPrivyToken(request);
+		const { userId } = await verifyAuthToken(request);
 
 		await dbConnect();
 		const user = await User.findOne({ privyUserId: userId });
