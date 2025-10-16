@@ -7,6 +7,7 @@ import type { Strategy } from "@/types/aura";
 import { exportPortfolioToExcel, exportPortfolioToCSV } from "@/lib/exportPortfolio";
 
 export default function Home() {
+  const hasPrepopulated = useRef(false);
   const { user, logout: privyLogout, getAuthHeaders, ready, authenticated, synced } = usePrivyAuth();
   const [wallets, setWallets] = useState<string[]>([]);
   const [newWallet, setNewWallet] = useState("");
@@ -235,7 +236,19 @@ export default function Home() {
     if (inputRef.current) {
       inputRef.current.focus();
     }
-  }, [newWallet, wallets]);
+    // Prepopulate wallet input only once if no wallets exist and input is empty
+    // Wait until wallets are loaded before prepopulating
+    // Also mark as prepopulated if user has any wallets (to prevent future prepopulation)
+    if (!walletsLoading) {
+      if (wallets.length > 0) {
+        hasPrepopulated.current = true;
+      }
+      if (!hasPrepopulated.current && user?.wallet?.address && wallets.length === 0 && newWallet === "") {
+        setNewWallet(user.wallet.address);
+        hasPrepopulated.current = true;
+      }
+    }
+  }, [user?.wallet?.address, wallets.length, newWallet, walletsLoading]);
 
   // Keep selected wallet valid when wallets list changes
   useEffect(() => {
@@ -955,9 +968,9 @@ export default function Home() {
                   <div className="space-y-2">
                     {wallets.length === 0 ? (
                       <div
-                        className={`text-sm rounded-lg p-4 border border-dashed ${theme === "dark" ? "text-slate-400 bg-slate-800 border-slate-700" : "text-slate-500 bg-slate-50 border-slate-200"}`}
+                        className={`text-sm rounded-lg p-4 border ${theme === "dark" ? "text-slate-400 bg-slate-800 border-slate-700" : "text-slate-500 bg-slate-50 border-slate-200"}`}
                       >
-                        No wallets added yet. Add your first one above.
+                        Track all your wallets as a single, unified portfolio. Add your first wallet above to get started!
                       </div>
                     ) : (
                       wallets.map((wallet) => (
@@ -1056,13 +1069,12 @@ export default function Home() {
                           <p
                             className={`text-sm ${theme === "dark" ? "text-slate-200" : "text-slate-800"}`}
                           >
-                            You don’t have any wallets yet.
+                            You haven’t added any wallets yet.
                           </p>
                           <p
                             className={`text-xs ${theme === "dark" ? "text-slate-400" : "text-slate-600"}`}
                           >
-                            Add wallet addresses from the Wallets tab to see
-                            your portfolio.
+                            Add wallet addresses from the Wallets tab to start tracking your portfolio.
                           </p>
                         </div>
                         <button
@@ -1737,7 +1749,7 @@ export default function Home() {
                           <p
                             className={`text-sm ${theme === "dark" ? "text-slate-200" : "text-slate-800"}`}
                           >
-                            You don’t have any wallets yet.
+                            You haven’t added any wallets yet.
                           </p>
                           <p
                             className={`text-xs ${theme === "dark" ? "text-slate-400" : "text-slate-600"}`}
