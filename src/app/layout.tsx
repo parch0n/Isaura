@@ -20,10 +20,7 @@ const urbanist = Urbanist({
 });
 
 export const metadata: Metadata = {
-  title: "Isaura",
-  icons: {
-    icon: "/logo.png",
-  },
+  title: "Isaura",  
 };
 
 export default function RootLayout({
