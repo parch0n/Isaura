@@ -68,6 +68,7 @@ export default function Home() {
   const [strategiesMenuOpen, setStrategiesMenuOpen] = useState(false);
   const walletMenuRef = useRef<HTMLDivElement>(null);
   const strategiesMenuRef = useRef<HTMLDivElement>(null);
+  const [portfolioRefreshDisabled, setPortfolioRefreshDisabled] = useState(false);
 
   const displayWalletLabel = (w: string) => {
     // Return full address without shortening
@@ -559,6 +560,45 @@ export default function Home() {
 
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
 
+  // Handle portfolio refresh with 5-second cooldown
+  const handlePortfolioRefresh = useCallback(async () => {
+    if (portfolioRefreshDisabled) return;
+
+    // Disable button immediately
+    setPortfolioRefreshDisabled(true);
+
+    // Start the refresh
+    setPortfolioLoading(true);
+    setPortfolioError("");
+    
+    try {
+      const headers = getAuthHeaders();
+      const res = await fetch("/api/user/portfolio", { 
+        cache: "no-store",
+        headers 
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed to load portfolio");
+      
+      setPortfolioTokens(Array.isArray(data.tokens) ? data.tokens : []);
+      setPortfolioByWallet(
+        data.byWallet && typeof data.byWallet === "object"
+          ? data.byWallet
+          : {},
+      );
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Failed to load portfolio";
+      setPortfolioError(message);
+    } finally {
+      setPortfolioLoading(false);
+    }
+
+    // Re-enable button after 5 seconds
+    setTimeout(() => {
+      setPortfolioRefreshDisabled(false);
+    }, 5000);
+  }, [portfolioRefreshDisabled, getAuthHeaders]);
+
   // Show loading while checking authentication
   if (!ready) {
     return (
@@ -974,7 +1014,7 @@ export default function Home() {
                     </div>
                   ) : (
                     <>
-                      {/* Wallet selector */}
+                      {/* Wallet selector and Refresh button */}
                       <div className="mb-3 flex items-center gap-2">
                         <label
                           className={`text-xs ${theme === "dark" ? "text-slate-400" : "text-slate-600"}`}
@@ -1058,6 +1098,60 @@ export default function Home() {
                             </div>
                           )}
                         </div>
+                        {/* Refresh button */}
+                        <button
+                          onClick={handlePortfolioRefresh}
+                          disabled={portfolioRefreshDisabled || portfolioLoading}
+                          className={`p-2 rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                            portfolioRefreshDisabled || portfolioLoading
+                              ? theme === "dark"
+                                ? "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700"
+                                : "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
+                              : theme === "dark"
+                              ? "bg-slate-800 text-slate-300 hover:text-indigo-300 hover:bg-slate-700 border border-slate-700 cursor-pointer"
+                              : "bg-white text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 cursor-pointer"
+                          }`}
+                          title="Refresh portfolio"
+                          aria-label="Refresh portfolio"
+                        >
+                          {portfolioLoading ? (
+                            <svg
+                              className="h-5 w-5 animate-spin"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                              ></circle>
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                              ></path>
+                            </svg>
+                          ) : (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              strokeWidth={2}
+                              stroke="currentColor"
+                              className="h-5 w-5"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
+                              />
+                            </svg>
+                          )}
+                        </button>
                       </div>
                       {portfolioLoading ? (
                         <div
