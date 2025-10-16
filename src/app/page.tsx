@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { usePrivyAuth } from "@/lib/usePrivyAuth";
 import type { Strategy } from "@/types/aura";
+import { exportPortfolioToExcel, exportPortfolioToCSV } from "@/lib/exportPortfolio";
 
 export default function Home() {
   const { user, logout: privyLogout, getAuthHeaders, ready, authenticated, synced } = usePrivyAuth();
@@ -65,9 +66,30 @@ export default function Home() {
   const [sortKey, setSortKey] = useState<"symbol" | "totalUSD">("totalUSD");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [walletMenuOpen, setWalletMenuOpen] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
   const [strategiesMenuOpen, setStrategiesMenuOpen] = useState(false);
   const walletMenuRef = useRef<HTMLDivElement>(null);
   const strategiesMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close export dropdown on outside click or Escape
+  useEffect(() => {
+    if (!exportMenuOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setExportMenuOpen(false);
+      }
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setExportMenuOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [exportMenuOpen]);
   const [portfolioRefreshDisabled, setPortfolioRefreshDisabled] = useState(false);
 
   const displayWalletLabel = (w: string) => {
@@ -598,6 +620,48 @@ export default function Home() {
       setPortfolioRefreshDisabled(false);
     }, 5000);
   }, [portfolioRefreshDisabled, getAuthHeaders]);
+
+  // Handle export to Excel
+  const handleExportToExcel = useCallback(async () => {
+    try {
+      const rows =
+        selectedWallet === "__combined__"
+          ? portfolioTokens
+          : portfolioByWallet[selectedWallet] || [];
+      if (rows.length === 0) {
+        alert("No portfolio data to export");
+        return;
+      }
+      await exportPortfolioToExcel({
+        tokens: rows,
+        walletLabel: selectedWallet === "__combined__" ? "All Wallets" : selectedWallet
+      });
+    } catch (error) {
+      console.error("Error exporting to Excel:", error);
+      alert("Failed to export portfolio. Please try again.");
+    }
+  }, [selectedWallet, portfolioTokens, portfolioByWallet]);
+
+  // Handle export to CSV
+  const handleExportToCSV = useCallback(() => {
+    try {
+      const rows =
+        selectedWallet === "__combined__"
+          ? portfolioTokens
+          : portfolioByWallet[selectedWallet] || [];
+      if (rows.length === 0) {
+        alert("No portfolio data to export");
+        return;
+      }
+      exportPortfolioToCSV({
+        tokens: rows,
+        walletLabel: selectedWallet === "__combined__" ? "All Wallets" : selectedWallet
+      });
+    } catch (error) {
+      console.error("Error exporting to CSV:", error);
+      alert("Failed to export portfolio. Please try again.");
+    }
+  }, [selectedWallet, portfolioTokens, portfolioByWallet]);
 
   // Show loading while checking authentication
   if (!ready) {
@@ -1152,6 +1216,59 @@ export default function Home() {
                             </svg>
                           )}
                         </button>
+                        {/* Export dropdown button */}
+                        <div className="relative inline-block" ref={exportMenuRef}>
+                          <button
+                            onClick={() => setExportMenuOpen((o) => !o)}
+                            disabled={portfolioLoading || portfolioTokens.length === 0}
+                            className={`p-2 rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                              portfolioLoading || portfolioTokens.length === 0
+                                ? theme === "dark"
+                                  ? "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700"
+                                  : "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
+                                : exportMenuOpen
+                                ? theme === "dark"
+                                  ? "bg-slate-700 text-indigo-300 border border-slate-700 cursor-pointer"
+                                  : "bg-indigo-50 text-indigo-600 border border-slate-200 cursor-pointer"
+                                : theme === "dark"
+                                ? "bg-slate-800 text-slate-300 hover:text-indigo-300 hover:bg-slate-700 border border-slate-700 cursor-pointer"
+                                : "bg-white text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 cursor-pointer"
+                            }`}
+                            title="Export portfolio"
+                            aria-label="Export portfolio"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              strokeWidth={2}
+                              stroke="currentColor"
+                              className="h-5 w-5"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
+                              />
+                            </svg>
+                          </button>
+                          {exportMenuOpen && (
+                            <div className={`absolute right-0 mt-1 w-64 rounded-md shadow-xl z-50 border overflow-hidden ${theme === "dark" ? "bg-slate-800 border-slate-700 text-slate-200" : "bg-white border-slate-200 text-slate-800"}`}>
+                              <button
+                                onClick={() => { handleExportToExcel(); setExportMenuOpen(false); }}
+                                className={`w-full text-left px-6 py-3 cursor-pointer border-b text-sm font-medium transition-colors ${theme === "dark" ? "hover:bg-slate-700 hover:text-indigo-300 border-slate-700" : "hover:bg-indigo-50 hover:text-indigo-600 border-slate-200"}`}
+                              >
+                                Export to Excel (.xlsx)
+                              </button>
+                              <button
+                                onClick={() => { handleExportToCSV(); setExportMenuOpen(false); }}
+                                className={`w-full text-left px-6 py-3 cursor-pointer text-sm font-medium transition-colors ${theme === "dark" ? "hover:bg-slate-700 hover:text-indigo-300" : "hover:bg-indigo-50 hover:text-indigo-600"}`}
+                              >
+                                Export to CSV (.csv)
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                       {portfolioLoading ? (
                         <div

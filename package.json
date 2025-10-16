@@ -12,6 +12,7 @@
     "@privy-io/react-auth": "^3.3.0",
     "@privy-io/server-auth": "^1.32.5",
     "crypto-js": "^4.2.0",
+    "exceljs": "^4.4.0",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.20.0",
     "mongoose": "^8.18.3",
