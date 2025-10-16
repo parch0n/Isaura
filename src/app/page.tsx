@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { usePrivyAuth } from "@/lib/usePrivyAuth";
 import type { Strategy } from "@/types/aura";
+import { exportPortfolioToExcel } from "@/lib/exportPortfolio";
 
 export default function Home() {
   const { user, logout: privyLogout, getAuthHeaders, ready, authenticated, synced } = usePrivyAuth();
@@ -599,6 +600,31 @@ export default function Home() {
     }, 5000);
   }, [portfolioRefreshDisabled, getAuthHeaders]);
 
+  // Handle export to Excel
+  const handleExportToExcel = useCallback(async () => {
+    try {
+      // Determine which data to export based on selected wallet
+      const rows =
+        selectedWallet === "__combined__"
+          ? portfolioTokens
+          : portfolioByWallet[selectedWallet] || [];
+
+      if (rows.length === 0) {
+        alert("No portfolio data to export");
+        return;
+      }
+
+      // Call the utility function
+      await exportPortfolioToExcel({
+        tokens: rows,
+        walletLabel: selectedWallet === "__combined__" ? "All Wallets" : selectedWallet
+      });
+    } catch (error) {
+      console.error("Error exporting to Excel:", error);
+      alert("Failed to export portfolio. Please try again.");
+    }
+  }, [selectedWallet, portfolioTokens, portfolioByWallet]);
+
   // Show loading while checking authentication
   if (!ready) {
     return (
@@ -1151,6 +1177,37 @@ export default function Home() {
                               />
                             </svg>
                           )}
+                        </button>
+                        {/* Export to Excel button */}
+                        <button
+                          onClick={handleExportToExcel}
+                          disabled={portfolioLoading || portfolioTokens.length === 0}
+                          className={`p-2 rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                            portfolioLoading || portfolioTokens.length === 0
+                              ? theme === "dark"
+                                ? "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700"
+                                : "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
+                              : theme === "dark"
+                              ? "bg-slate-800 text-slate-300 hover:text-emerald-300 hover:bg-slate-700 border border-slate-700 cursor-pointer"
+                              : "bg-white text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 border border-slate-200 cursor-pointer"
+                          }`}
+                          title="Export to Excel"
+                          aria-label="Export to Excel"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth={2}
+                            stroke="currentColor"
+                            className="h-5 w-5"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
+                            />
+                          </svg>
                         </button>
                       </div>
                       {portfolioLoading ? (
