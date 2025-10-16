@@ -329,3 +329,59 @@ export async function exportPortfolioToExcel(options: ExportPortfolioOptions): P
 	link.click();
 	window.URL.revokeObjectURL(url);
 }
+
+export function exportPortfolioToCSV(options: ExportPortfolioOptions): void {
+	const { tokens, walletLabel } = options;
+	if (tokens.length === 0) {
+		throw new Error('No portfolio data to export');
+	}
+
+	// CSV header
+	const header = ['Token Symbol', 'Amount', 'Value (USD)', 'Networks'];
+	const rows = tokens.map((token) => [token.symbol, token.total, token.totalUSD, token.networks.join(', ')]);
+
+	// Add summary row at the top
+	const dateStr = new Date().toISOString().split('T')[0];
+	const summary = [
+		[`Portfolio Export - ${walletLabel}`],
+		[`Generated: ${new Date().toLocaleString()}`],
+		[],
+		['Total Value', tokens.reduce((acc, t) => acc + (t.totalUSD || 0), 0)],
+		['Total Tokens', tokens.length],
+		['Networks', Array.from(new Set(tokens.flatMap((t) => t.networks))).length],
+		[],
+	];
+
+	// Build CSV string
+	let csvContent = '';
+	summary.forEach((row) => {
+		csvContent += row.map(String).join(',') + '\n';
+	});
+	csvContent += header.join(',') + '\n';
+	rows.forEach((row) => {
+		csvContent +=
+			row
+				.map((val) => {
+					// Escape commas and quotes
+					if (typeof val === 'string' && (val.includes(',') || val.includes('"'))) {
+						return '"' + val.replace(/"/g, '""') + '"';
+					}
+					return val;
+				})
+				.join(',') + '\n';
+	});
+
+	// Add total row at the bottom
+	const totalValue = tokens.reduce((acc, t) => acc + (t.totalUSD || 0), 0);
+	csvContent += ['TOTAL', '', totalValue, ''].join(',') + '\n';
+
+	// Download CSV
+	const blob = new Blob([csvContent], { type: 'text/csv' });
+	const filename = `portfolio-${walletLabel}-${dateStr}.csv`;
+	const url = window.URL.createObjectURL(blob);
+	const link = document.createElement('a');
+	link.href = url;
+	link.download = filename;
+	link.click();
+	window.URL.revokeObjectURL(url);
+}
