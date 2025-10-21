@@ -4,7 +4,6 @@ import { User } from '@/models/User';
 import { dbConnect } from '@/lib/mongoose';
 import { fetchWithTimeout } from '@/lib/fetch';
 import { AuraResponse } from '@/types/aura';
-import { mockAuraResponse } from '@/mocks/aura';
 import { portfolioCache } from '@/lib/cache';
 import { decryptWallets } from '@/lib/encryption';
 
@@ -38,12 +37,7 @@ export async function GET(request: NextRequest) {
 			return NextResponse.json(cached);
 		}
 
-		const useMock = process.env.AURA_MOCK === 'true';
 		const requests = wallets.map(async (addr) => {
-			if (useMock) {
-				const json = mockAuraResponse(addr);
-				return { ok: true as const, addr, json };
-			}
 			try {
 				const url = `https://aura.adex.network/api/portfolio/balances?address=${addr}&apiKey=${process.env.AURA_API_KEY}`;
 				const res = await fetchWithTimeout(url, {}, 120000);

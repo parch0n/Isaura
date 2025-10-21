@@ -32,8 +32,7 @@ cp .env.local.example .env.local
 2. Edit `.env.local` and fill in the required values:
     - `MONGODB_URI` - Your MongoDB connection string
     - `JWT_SECRET` - A secret key for JWT token generation
-    - `AURA_MOCK` - Set to `true` for mock data or `false` for real API
-    - `AURA_API_KEY` - Your Aura API key (if not using mock mode)
+    - `AURA_API_KEY` - Your Aura API key
     - `OPENAI_API_KEY` - Your OpenAI API key for AI features
     - `NEXT_PUBLIC_PRIVY_APP_ID` - Your Privy app ID for authentication
     - `PRIVY_APP_SECRET` - Your Privy app secret
